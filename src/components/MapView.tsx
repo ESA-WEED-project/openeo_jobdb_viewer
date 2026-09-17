@@ -95,6 +95,12 @@ export function MapView({
     vectorSourceRef.current = vectorSource
     mapRef.current = map
 
+    // The container can still be 0×0 when the map is constructed (e.g. during
+    // layout/flex sizing or React StrictMode's mount/cleanup/remount), which
+    // leaves OpenLayers' internal viewport stuck at 0px until told otherwise.
+    const resizeObserver = new ResizeObserver(() => map.updateSize())
+    resizeObserver.observe(mapElementRef.current)
+
     map.on('click', (event) => {
       const feature = map.forEachFeatureAtPixel(event.pixel, (candidate) => candidate) as
         | Feature<Geometry>
@@ -139,6 +145,7 @@ export function MapView({
     })
 
     return () => {
+      resizeObserver.disconnect()
       map.setTarget(undefined)
       hoveredFeatureRef.current = null
       featureByKey.clear()

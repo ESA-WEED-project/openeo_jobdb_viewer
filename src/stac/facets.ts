@@ -67,7 +67,7 @@ interface FieldAccumulator {
   types: Set<'boolean' | 'number' | 'string'>
 }
 
-const IGNORED_FACET_FIELDS = new Set(['bbox', 'target_epsg'])
+const IGNORED_FACET_FIELDS = new Set(['bbox', 'target_epsg', 'id'])
 
 interface MetricFieldDefinition {
   defaultUnit: string
@@ -128,9 +128,11 @@ const NUMERIC_UNIT_FIELDS: Record<string, MetricFieldDefinition> = {
     },
   },
   memory: {
-    defaultUnit: 'MB',
+    defaultUnit: 'mb-seconds',
     parse: (value) => {
-      const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*([a-z]+)?$/i)
+      // openEO usage metrics report memory as "<value> mb-seconds"; only fall
+      // back to byte-size unit conversion for plain size units like "MB"/"GB".
+      const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*([a-z-]+)?$/i)
       if (!match) {
         return undefined
       }
@@ -140,7 +142,7 @@ const NUMERIC_UNIT_FIELDS: Record<string, MetricFieldDefinition> = {
         return undefined
       }
 
-      const unit = (match[2] ?? 'mb').toLowerCase()
+      const unit = (match[2] ?? 'mb-seconds').toLowerCase()
       const multipliers: Record<string, number> = {
         b: 1 / (1024 * 1024),
         byte: 1 / (1024 * 1024),
@@ -150,6 +152,7 @@ const NUMERIC_UNIT_FIELDS: Record<string, MetricFieldDefinition> = {
         kb: 1 / 1024,
         kib: 1 / 1024,
         mb: 1,
+        'mb-seconds': 1,
         mib: 1,
         tb: 1024 * 1024,
         tib: 1024 * 1024,

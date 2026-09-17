@@ -218,7 +218,10 @@ function App() {
   )
 
   const performLoad = useCallback(async (backgroundRefresh: boolean) => {
-    if (activeRequestRef.current) {
+    // Ignore the guard once the in-flight request has been aborted (e.g. by an
+    // effect cleanup) — its signal flips synchronously, before the async
+    // rejection reaches the finally block that would otherwise reset this ref.
+    if (activeRequestRef.current && abortControllerRef.current?.signal.aborted !== true) {
       if (backgroundRefresh) {
         scheduleNextPoll(refreshIntervalSeconds)
       }
@@ -434,15 +437,12 @@ function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-copy">
-          <p className="eyebrow">Static STAC collection viewer</p>
           <h1>openEO job map viewer</h1>
-          <p className="header-copy">
-            Load a STAC collection and inspect openEO job footprints, statuses, filters, and live refreshes.
-          </p>
+          <p className="eyebrow">Static STAC collection viewer</p>
         </div>
         <form className="load-form" onSubmit={handleSubmit}>
-          <label>
-            <span>STAC collection URL</span>
+          <label className="url-field">
+            <span className="sr-only">STAC collection URL</span>
             <input
               type="url"
               value={collectionInput}
@@ -450,37 +450,35 @@ function App() {
               placeholder={EXAMPLE_COLLECTION_URL}
             />
           </label>
-          <div className="config-grid">
-            <label>
-              <span>Refresh interval (s)</span>
-              <input
-                type="number"
-                min={5}
-                value={refreshIntervalSeconds}
-                onChange={(event) => setRefreshIntervalSeconds(Math.max(5, Number(event.target.value) || 5))}
-              />
-            </label>
-          </div>
+          <label className="refresh-field">
+            <span className="sr-only">Refresh interval (s)</span>
+            <input
+              type="number"
+              min={5}
+              value={refreshIntervalSeconds}
+              onChange={(event) => setRefreshIntervalSeconds(Math.max(5, Number(event.target.value) || 5))}
+            />
+            <span className="field-suffix">s</span>
+          </label>
           <div className="form-actions">
             <button type="submit">Load collection</button>
-            <button type="button" onClick={() => void performLoadRef.current?.(true)}>
-              Manual refresh
+            <button type="button" className="secondary-button" onClick={() => void performLoadRef.current?.(true)}>
+              Refresh
             </button>
             {isRefreshing ? <span className="spinner-badge">Refreshing…</span> : null}
           </div>
           <div className="preset-row">
-            <button type="button" className="text-button" onClick={() => setCollectionInput(EXAMPLE_COLLECTION_URL)}>
-              Use example URL
-            </button>
             {recentUrls.length > 0 ? (
-              <div className="recent-urls">
-                <span>Recent:</span>
-                {recentUrls.map((url) => (
-                  <button key={url} type="button" className="text-button" onClick={() => setCollectionInput(url)}>
-                    {url}
-                  </button>
-                ))}
-              </div>
+              <details className="recent-urls">
+                <summary>Recent</summary>
+                <div className="recent-urls-list">
+                  {recentUrls.map((url) => (
+                    <button key={url} type="button" className="text-button" onClick={() => setCollectionInput(url)}>
+                      {url}
+                    </button>
+                  ))}
+                </div>
+              </details>
             ) : null}
           </div>
         </form>

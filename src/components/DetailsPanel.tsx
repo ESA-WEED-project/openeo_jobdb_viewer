@@ -1,5 +1,6 @@
 import type { StacItem } from '../stac/types'
 import { FloatingPanel } from './FloatingPanel'
+import { ChevronIcon, CloseIcon } from './PanelIcons'
 
 interface DetailsPanelProps {
   item?: StacItem
@@ -47,14 +48,22 @@ export function DetailsPanel({
         <>
           <button
             type="button"
-            className="panel-button secondary-button"
+            className="icon-button"
             onClick={onToggleCollapse}
             aria-expanded={!panelCollapsed}
+            aria-label={panelCollapsed ? 'Expand selected job' : 'Collapse selected job'}
+            title={panelCollapsed ? 'Expand' : 'Collapse'}
           >
-            {panelCollapsed ? 'Expand' : 'Collapse'}
+            <ChevronIcon direction={panelCollapsed ? 'down' : 'up'} />
           </button>
-          <button type="button" className="panel-button secondary-button" onClick={onClear}>
-            Close
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClear}
+            aria-label="Close selected job"
+            title="Close"
+          >
+            <CloseIcon />
           </button>
         </>
       }

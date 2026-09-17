@@ -1,6 +1,7 @@
 import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState } from '../state/types'
 import { formatUtcDateTimeInput, parseUtcDateTimeInput } from '../state/datetime'
 import { FloatingPanel } from './FloatingPanel'
+import { ChevronIcon, ResetIcon } from './PanelIcons'
 import {
   getEnumValueCounts,
   type BooleanFacetDefinition,
@@ -90,6 +91,63 @@ function TextFacet({
   )
 }
 
+function formatRangeValue(value: number): string {
+  return Number.isInteger(value) ? value.toLocaleString() : value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+function DualRangeSlider({
+  field,
+  min,
+  max,
+  valueMin,
+  valueMax,
+  onChange,
+}: {
+  field: string
+  min: number
+  max: number
+  valueMin: number
+  valueMax: number
+  onChange: (value: NumberRangeFilter) => void
+}) {
+  const span = max - min || 1
+  const minPercent = ((valueMin - min) / span) * 100
+  const maxPercent = ((valueMax - min) / span) * 100
+
+  return (
+    <div className="dual-range">
+      <div className="dual-range-labels">
+        <span>Min {formatRangeValue(valueMin)}</span>
+        <span>Max {formatRangeValue(valueMax)}</span>
+      </div>
+      <div className="dual-range-track">
+        <div
+          className="dual-range-track-highlight"
+          style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+        />
+        <input
+          type="range"
+          className="dual-range-input"
+          min={min}
+          max={max}
+          value={valueMin}
+          aria-label={`Minimum ${field}`}
+          onChange={(event) => onChange({ min: Math.min(Number(event.target.value), valueMax) })}
+        />
+        <input
+          type="range"
+          className="dual-range-input"
+          min={min}
+          max={max}
+          value={valueMax}
+          aria-label={`Maximum ${field}`}
+          onChange={(event) => onChange({ max: Math.max(Number(event.target.value), valueMin) })}
+        />
+      </div>
+    </div>
+  )
+}
+
 function NumberFacet({
   facet,
   filters,
@@ -106,68 +164,14 @@ function NumberFacet({
   return (
     <fieldset className="facet-group">
       <legend>{facet.unit ? `${facet.field} (${facet.unit})` : facet.field}</legend>
-      <div className="range-grid">
-        <label>
-          <span>Minimum</span>
-          <input
-            type="number"
-            value={value.min ?? ''}
-            min={facet.min}
-            max={value.max ?? facet.max}
-            onChange={(event) =>
-              onNumberChange(facet.field, {
-                ...value,
-                min: event.target.value === '' ? undefined : Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          <span>Maximum</span>
-          <input
-            type="number"
-            value={value.max ?? ''}
-            min={value.min ?? facet.min}
-            max={facet.max}
-            onChange={(event) =>
-              onNumberChange(facet.field, {
-                ...value,
-                max: event.target.value === '' ? undefined : Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          <span className="sr-only">Minimum slider for {facet.field}</span>
-          <input
-            type="range"
-            min={facet.min}
-            max={facet.max}
-            value={sliderMin}
-            onChange={(event) =>
-              onNumberChange(facet.field, {
-                ...value,
-                min: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          <span className="sr-only">Maximum slider for {facet.field}</span>
-          <input
-            type="range"
-            min={facet.min}
-            max={facet.max}
-            value={sliderMax}
-            onChange={(event) =>
-              onNumberChange(facet.field, {
-                ...value,
-                max: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-      </div>
+      <DualRangeSlider
+        field={facet.field}
+        min={facet.min}
+        max={facet.max}
+        valueMin={sliderMin}
+        valueMax={sliderMax}
+        onChange={(nextValue) => onNumberChange(facet.field, { ...value, ...nextValue })}
+      />
     </fieldset>
   )
 }
@@ -269,16 +273,24 @@ export function FiltersPanel({
       title="Filters"
       actions={
         <>
-          <button type="button" className="panel-button secondary-button" onClick={onReset}>
-            Reset
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onReset}
+            aria-label="Reset filters"
+            title="Reset filters"
+          >
+            <ResetIcon />
           </button>
           <button
             type="button"
-            className="panel-button secondary-button"
+            className="icon-button"
             onClick={onToggleCollapse}
             aria-expanded={!panelCollapsed}
+            aria-label={panelCollapsed ? 'Expand filters' : 'Collapse filters'}
+            title={panelCollapsed ? 'Expand' : 'Collapse'}
           >
-            {panelCollapsed ? 'Expand' : 'Collapse'}
+            <ChevronIcon direction={panelCollapsed ? 'down' : 'up'} />
           </button>
         </>
       }

@@ -4,7 +4,7 @@ export const EXAMPLE_COLLECTION_URL =
   'https://catalogue.weed.apex.esa.int/collections/AM1729-DT_SLOW_FLOW-extent-jobdb'
 
 export const DEFAULT_REFRESH_INTERVAL_SECONDS = 30
-const REMOVED_FILTER_FIELDS = new Set(['bbox', 'target_epsg'])
+const REMOVED_FILTER_FIELDS = new Set(['bbox', 'target_epsg', 'id'])
 
 export function createEmptyFilters(): AppFilters {
   return {
