@@ -161,11 +161,35 @@ describe('evaluateItemAgainstFilters', () => {
       kind: 'number',
       max: 2048,
       min: 512,
-      unit: 'MB',
+      unit: 'mb-seconds',
     })
     expect(evaluateItemAgainstFilters(metricItems[0], filters, facets)).toBe(false)
     expect(evaluateItemAgainstFilters(metricItems[1], filters, facets)).toBe(true)
     expect(evaluateItemAgainstFilters(metricItems[2], filters, facets)).toBe(false)
+  })
+
+  it('parses openEO usage-style memory values reported in mb-seconds', () => {
+    const usageItems: StacItem[] = [
+      {
+        id: 'job-1',
+        properties: { memory: '19291560 mb-seconds' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-2',
+        properties: { memory: '41926320 mb-seconds' },
+        type: 'Feature',
+      },
+    ]
+
+    const facets = inferFacets(usageItems).facets
+
+    expect(facets.find((facet) => facet.field === 'memory')).toMatchObject({
+      kind: 'number',
+      max: 41926320,
+      min: 19291560,
+      unit: 'mb-seconds',
+    })
   })
 
   it('keeps metric facets when bare numbers and number-plus-unit strings are mixed', () => {
