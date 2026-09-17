@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { formatUtcDateTimeInput, parseUtcDateTimeInput } from '../state/datetime'
 import { createEmptyFilters } from '../state/hash'
 import { evaluateItemAgainstFilters, inferFacets } from './facets'
 import type { StacItem } from './types'
@@ -53,6 +54,22 @@ describe('evaluateItemAgainstFilters', () => {
     const filters = createEmptyFilters()
     filters.enums.status = ['running']
     filters.dates.created = { from: '2024-01-02T00:00:00Z', to: '2024-01-02T23:59:59Z' }
+
+    expect(evaluateItemAgainstFilters(items[0], filters, facets)).toBe(false)
+    expect(evaluateItemAgainstFilters(items[1], filters, facets)).toBe(true)
+    expect(evaluateItemAgainstFilters(items[2], filters, facets)).toBe(false)
+  })
+
+  it('keeps datetime-local date filters aligned to UTC values', () => {
+    const facets = inferFacets(items).facets
+    const filters = createEmptyFilters()
+    const fromInput = formatUtcDateTimeInput('2024-01-02T00:00:00Z')
+    const toInput = formatUtcDateTimeInput('2024-01-02T23:59:00Z')
+
+    filters.dates.created = {
+      from: parseUtcDateTimeInput(fromInput),
+      to: parseUtcDateTimeInput(toInput),
+    }
 
     expect(evaluateItemAgainstFilters(items[0], filters, facets)).toBe(false)
     expect(evaluateItemAgainstFilters(items[1], filters, facets)).toBe(true)

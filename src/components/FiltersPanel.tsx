@@ -1,4 +1,5 @@
 import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState } from '../state/types'
+import { formatUtcDateTimeInput, parseUtcDateTimeInput } from '../state/datetime'
 import {
   getEnumValueCounts,
   type BooleanFacetDefinition,
@@ -23,24 +24,6 @@ interface FiltersPanelProps {
   showingCount: number
   sparseFields: string[]
   totalCount: number
-}
-
-function formatDateInputValue(value: string | undefined): string {
-  if (!value) {
-    return ''
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-
-  const year = date.getFullYear()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  const hours = `${date.getHours()}`.padStart(2, '0')
-  const minutes = `${date.getMinutes()}`.padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 function EnumFacet({
@@ -205,13 +188,13 @@ function DateFacet({
           <span>From</span>
           <input
             type="datetime-local"
-            value={formatDateInputValue(value.from)}
-            min={formatDateInputValue(facet.min)}
-            max={formatDateInputValue(value.to ?? facet.max)}
+            value={formatUtcDateTimeInput(value.from)}
+            min={formatUtcDateTimeInput(facet.min)}
+            max={formatUtcDateTimeInput(value.to ?? facet.max)}
             onChange={(event) =>
               onDateChange(facet.field, {
                 ...value,
-                from: event.target.value || undefined,
+                from: parseUtcDateTimeInput(event.target.value),
               })
             }
           />
@@ -220,13 +203,13 @@ function DateFacet({
           <span>To</span>
           <input
             type="datetime-local"
-            value={formatDateInputValue(value.to)}
-            min={formatDateInputValue(value.from ?? facet.min)}
-            max={formatDateInputValue(facet.max)}
+            value={formatUtcDateTimeInput(value.to)}
+            min={formatUtcDateTimeInput(value.from ?? facet.min)}
+            max={formatUtcDateTimeInput(facet.max)}
             onChange={(event) =>
               onDateChange(facet.field, {
                 ...value,
-                to: event.target.value || undefined,
+                to: parseUtcDateTimeInput(event.target.value),
               })
             }
           />

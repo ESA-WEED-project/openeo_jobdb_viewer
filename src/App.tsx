@@ -288,7 +288,7 @@ function App() {
               key: currentSelection.key,
               selfHref: matchingItem.links?.find((link) => link.rel === 'self')?.href,
             }
-          : currentSelection
+          : undefined
       })
 
       scheduleNextPoll(refreshIntervalSeconds)

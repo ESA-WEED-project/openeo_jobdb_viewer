@@ -188,7 +188,11 @@ export function MapView({
 
     preparedItemsByKeyRef.current = new Map(items.map((item) => [item.key, item]))
 
-    if (items.length > 0 && fittedCollectionUrlRef.current !== collectionUrl) {
+    if (
+      items.length > 0 &&
+      vectorSource.getFeatures().length > 0 &&
+      fittedCollectionUrlRef.current !== collectionUrl
+    ) {
       const extent = vectorSource.getExtent()
       if (extent) {
         map.getView().fit(extent, {
