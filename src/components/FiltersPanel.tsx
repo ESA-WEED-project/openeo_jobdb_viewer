@@ -259,10 +259,11 @@ function DateFacet({
         <label>
           <span>From</span>
           <input
-            type="text"
+            type="number"
             inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength={4}
+            min={minYear}
+            max={activeToYear || maxYear}
+            step={1}
             key={`${facet.field}-from-${activeFromYear}`}
             defaultValue={activeFromYear}
             placeholder={minYear}
@@ -273,10 +274,11 @@ function DateFacet({
         <label>
           <span>To</span>
           <input
-            type="text"
+            type="number"
             inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength={4}
+            min={activeFromYear || minYear}
+            max={maxYear}
+            step={1}
             key={`${facet.field}-to-${activeToYear}`}
             defaultValue={activeToYear}
             placeholder={maxYear}
