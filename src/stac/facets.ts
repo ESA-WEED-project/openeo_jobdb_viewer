@@ -67,7 +67,18 @@ interface FieldAccumulator {
   types: Set<'boolean' | 'number' | 'string'>
 }
 
-const IGNORED_FACET_FIELDS = new Set(['bbox', 'target_epsg', 'id'])
+const IGNORED_FACET_FIELDS = new Set([
+  'attempt',
+  'bbox',
+  'digitalId',
+  'id',
+  'identifier',
+  'nonEO_file',
+  'scenarioId',
+  'target_epsg',
+  'updated',
+  'year',
+])
 
 interface MetricFieldDefinition {
   defaultUnit: string
@@ -211,11 +222,7 @@ function facetSortOrder(field: string): number {
     return 2
   }
 
-  if (field === 'updated') {
-    return 3
-  }
-
-  return 4
+  return 3
 }
 
 export function inferFacets(items: StacItem[]): FacetInferenceResult {

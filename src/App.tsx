@@ -155,9 +155,8 @@ function App() {
         return
       }
       failureCountRef.current = 0
-      failureCountRef.current = 0
-      failureCountRef.current = 0
       setItems(result.items)
+      setLoadMessages(result.messages)
       setCollectionUrl(result.collectionUrl)
       setCollectionInput(result.collectionUrl)
       lastSuccessfulCollectionUrlRef.current = result.collectionUrl
@@ -183,18 +182,23 @@ function App() {
       })
 
       scheduleNextPoll(refreshIntervalSeconds)
-    } catch {
+    } catch (error) {
       if (abortController.signal.aborted) {
         return
       }
 
-      setLoadMessages([
-        {
-          code: 'unexpected-error',
-          level: 'error',
-          message: 'Unable to load the collection. Please check the URL and try again.',
-        },
-      ])
+      if (error instanceof Error && error.name === 'ValidationError' && 'validationMessage' in error) {
+        const validationError = error as Error & { validationMessage: ValidationMessage }
+        setLoadMessages([validationError.validationMessage])
+      } else {
+        setLoadMessages([
+          {
+            code: 'unexpected-error',
+            level: 'error',
+            message: 'Unable to load the collection. Please check the URL and try again.',
+          },
+        ])
+      }
 
       if (backgroundRefresh || items.length > 0) {
         failureCountRef.current += 1

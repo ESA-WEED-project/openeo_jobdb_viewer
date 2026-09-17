@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatUtcDateTimeInput, parseUtcDateTimeInput } from '../state/datetime'
+import { formatUtcYearInput, parseUtcYearInput } from '../state/datetime'
 import { createEmptyFilters } from '../state/hash'
 import { evaluateItemAgainstFilters, inferFacets } from './facets'
 import type { StacItem } from './types'
@@ -52,22 +52,36 @@ describe('inferFacets', () => {
       {
         id: 'job-a',
         properties: {
+          attempt: 1,
           bbox: 'ignored',
           cpu: '1 core',
+          digitalId: 'weed-1',
           duration: '12 s',
+          identifier: 'job-a',
           memory: '256 MB',
+          nonEO_file: false,
+          scenarioId: 'scenario-a',
           target_epsg: '3035',
+          updated: '2024-01-01T00:00:00Z',
+          year: 2024,
         },
         type: 'Feature',
       },
       {
         id: 'job-b',
         properties: {
+          attempt: 2,
           bbox: 'ignored',
           cpu: '4 core',
+          digitalId: 'weed-2',
           duration: '42 s',
+          identifier: 'job-b',
           memory: '1024 MB',
+          nonEO_file: true,
+          scenarioId: 'scenario-b',
           target_epsg: '3035',
+          updated: '2024-01-02T00:00:00Z',
+          year: 2024,
         },
         type: 'Feature',
       },
@@ -90,20 +104,38 @@ describe('evaluateItemAgainstFilters', () => {
     expect(evaluateItemAgainstFilters(items[2], filters, facets)).toBe(false)
   })
 
-  it('keeps datetime-local date filters aligned to UTC values', () => {
-    const facets = inferFacets(items).facets
+  it('maps year-only date filters to UTC year boundaries', () => {
+    const yearItems: StacItem[] = [
+      {
+        id: 'job-2023',
+        properties: { created: '2023-12-31T23:59:59Z' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-2024',
+        properties: { created: '2024-06-01T12:00:00Z' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-2025',
+        properties: { created: '2025-01-01T00:00:00Z' },
+        type: 'Feature',
+      },
+    ]
+
+    const facets = inferFacets(yearItems).facets
     const filters = createEmptyFilters()
-    const fromInput = formatUtcDateTimeInput('2024-01-02T00:00:00Z')
-    const toInput = formatUtcDateTimeInput('2024-01-02T23:59:00Z')
+    const fromInput = formatUtcYearInput('2024-01-02T00:00:00Z')
+    const toInput = formatUtcYearInput('2024-12-31T23:59:00Z')
 
     filters.dates.created = {
-      from: parseUtcDateTimeInput(fromInput),
-      to: parseUtcDateTimeInput(toInput),
+      from: parseUtcYearInput(fromInput, 'start'),
+      to: parseUtcYearInput(toInput, 'end'),
     }
 
-    expect(evaluateItemAgainstFilters(items[0], filters, facets)).toBe(false)
-    expect(evaluateItemAgainstFilters(items[1], filters, facets)).toBe(true)
-    expect(evaluateItemAgainstFilters(items[2], filters, facets)).toBe(false)
+    expect(evaluateItemAgainstFilters(yearItems[0], filters, facets)).toBe(false)
+    expect(evaluateItemAgainstFilters(yearItems[1], filters, facets)).toBe(true)
+    expect(evaluateItemAgainstFilters(yearItems[2], filters, facets)).toBe(false)
   })
 
   it('filters cpu values expressed as number-plus-unit strings', () => {

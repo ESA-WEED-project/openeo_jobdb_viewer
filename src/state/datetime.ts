@@ -1,4 +1,4 @@
-export function formatUtcDateTimeInput(value: string | undefined): string {
+export function formatUtcYearInput(value: string | undefined): string {
   if (!value) {
     return ''
   }
@@ -9,17 +9,20 @@ export function formatUtcDateTimeInput(value: string | undefined): string {
   }
 
   const year = date.getUTCFullYear()
-  const month = `${date.getUTCMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getUTCDate()}`.padStart(2, '0')
-  const hours = `${date.getUTCHours()}`.padStart(2, '0')
-  const minutes = `${date.getUTCMinutes()}`.padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
+  return String(year)
 }
 
-export function parseUtcDateTimeInput(value: string): string | undefined {
-  if (value.trim().length === 0) {
+export function parseUtcYearInput(value: string, boundary: 'start' | 'end'): string | undefined {
+  const trimmedValue = value.trim()
+  if (trimmedValue.length === 0) {
     return undefined
   }
 
-  return `${value}:00Z`
+  if (!/^\d{4}$/.test(trimmedValue)) {
+    return undefined
+  }
+
+  return boundary === 'start'
+    ? `${trimmedValue}-01-01T00:00:00Z`
+    : `${trimmedValue}-12-31T23:59:59Z`
 }

@@ -1,5 +1,5 @@
 import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState } from '../state/types'
-import { formatUtcDateTimeInput, parseUtcDateTimeInput } from '../state/datetime'
+import { formatUtcYearInput, parseUtcYearInput } from '../state/datetime'
 import { FloatingPanel } from './FloatingPanel'
 import { ChevronIcon, ResetIcon } from './PanelIcons'
 import {
@@ -186,6 +186,8 @@ function DateFacet({
   onDateChange: (field: string, value: DateRangeFilter) => void
 }) {
   const value = filters.dates[facet.field] ?? {}
+  const minYear = formatUtcYearInput(facet.min)
+  const maxYear = formatUtcYearInput(facet.max)
 
   return (
     <fieldset className="facet-group">
@@ -194,14 +196,17 @@ function DateFacet({
         <label>
           <span>From</span>
           <input
-            type="datetime-local"
-            value={formatUtcDateTimeInput(value.from)}
-            min={formatUtcDateTimeInput(facet.min)}
-            max={formatUtcDateTimeInput(value.to ?? facet.max)}
+            type="number"
+            inputMode="numeric"
+            step={1}
+            value={formatUtcYearInput(value.from)}
+            min={minYear}
+            max={formatUtcYearInput(value.to ?? facet.max)}
+            placeholder={minYear}
             onChange={(event) =>
               onDateChange(facet.field, {
                 ...value,
-                from: parseUtcDateTimeInput(event.target.value),
+                from: parseUtcYearInput(event.target.value, 'start'),
               })
             }
           />
@@ -209,14 +214,17 @@ function DateFacet({
         <label>
           <span>To</span>
           <input
-            type="datetime-local"
-            value={formatUtcDateTimeInput(value.to)}
-            min={formatUtcDateTimeInput(value.from ?? facet.min)}
-            max={formatUtcDateTimeInput(facet.max)}
+            type="number"
+            inputMode="numeric"
+            step={1}
+            value={formatUtcYearInput(value.to)}
+            min={formatUtcYearInput(value.from ?? facet.min)}
+            max={maxYear}
+            placeholder={maxYear}
             onChange={(event) =>
               onDateChange(facet.field, {
                 ...value,
-                to: parseUtcDateTimeInput(event.target.value),
+                to: parseUtcYearInput(event.target.value, 'end'),
               })
             }
           />
