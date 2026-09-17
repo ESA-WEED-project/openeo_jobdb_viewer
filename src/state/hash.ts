@@ -251,7 +251,10 @@ export function writeHashState(state: HashState): void {
     : window.location.hash
 
   if (currentHash !== nextHash) {
-    const nextUrl = nextHash.length > 0 ? `#${nextHash}` : window.location.pathname
+    const nextUrl =
+      nextHash.length > 0
+        ? `${window.location.pathname}${window.location.search}#${nextHash}`
+        : `${window.location.pathname}${window.location.search}`
     window.history.replaceState(null, '', nextUrl)
   }
 }

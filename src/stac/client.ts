@@ -76,7 +76,7 @@ async function fetchJsonObject<T extends object>(url: string, signal: AbortSigna
     if (error instanceof TypeError) {
       throw createValidationError(
         'cors',
-        'The catalogue did not return an Access-Control-Allow-Origin header allowing this origin; this must be fixed on the catalogue server.',
+        'The request failed before the app received an HTTP response. On static deployments the most likely cause is missing CORS headers: the catalogue did not return an Access-Control-Allow-Origin header allowing this origin. This can also be caused by network, DNS, or offline failures.',
       )
     }
 

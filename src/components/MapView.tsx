@@ -69,6 +69,8 @@ export function MapView({
     }
 
     const vectorSource = new VectorSource<Feature<Geometry>>()
+    const featureByKey = featureByKeyRef.current
+    const preparedItemsByKey = preparedItemsByKeyRef.current
     const vectorLayer = new VectorLayer({
       source: vectorSource,
       style: (feature) =>
@@ -138,6 +140,9 @@ export function MapView({
 
     return () => {
       map.setTarget(undefined)
+      hoveredFeatureRef.current = null
+      featureByKey.clear()
+      preparedItemsByKey.clear()
       mapRef.current = null
       vectorSourceRef.current = null
     }
