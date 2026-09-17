@@ -24,11 +24,11 @@ The default catalogue URL is defined in `/src/state/hash.ts` as `EXAMPLE_COLLECT
 
 ## GitHub Pages deployment
 
-This project is configured for GitHub Pages with `.github/workflows/deploy.yml`.
+This project is configured for GitHub Pages with `.github/workflows/pages.yml`.
 
 1. Push to `main` or trigger **Deploy static site** manually.
 2. In GitHub, open **Settings → Pages**.
-3. Set **Source** to **GitHub Actions**.
+3. Set **Source** to **GitHub Actions** so GitHub runs the Vite build workflow instead of publishing the raw repository files.
 
 The workflow builds with `VITE_BASE_PATH=/${REPOSITORY_NAME}/` so the generated `dist` works under both `/` and `/<repo-name>/`.
 
