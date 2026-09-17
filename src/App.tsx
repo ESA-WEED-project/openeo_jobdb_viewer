@@ -438,7 +438,6 @@ function App() {
       <header className="app-header">
         <div className="app-header-copy">
           <h1>WEED openEO processing status viewer</h1>
-          <p className="eyebrow">Static STAC collection viewer</p>
         </div>
         <form className="load-form" onSubmit={handleSubmit}>
           <label className="url-field">
