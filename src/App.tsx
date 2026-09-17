@@ -195,7 +195,7 @@ function App() {
           {
             code: 'unexpected-error',
             level: 'error',
-            message: 'Unable to load the collection. Please check the URL and try again.',
+            message: error instanceof Error ? error.message : 'Unable to load the collection. Please check the URL and try again.',
           },
         ])
       }
@@ -378,6 +378,7 @@ function App() {
             facets={facetsResult.facets}
             filters={filters}
             items={preparedMapItemsResult.items}
+            loadSequence={loadSequence}
             onSelect={(item) => {
               setSelectedItem(item)
               if (item) {

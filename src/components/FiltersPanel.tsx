@@ -196,13 +196,14 @@ function DateFacet({
         <label>
           <span>From</span>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            step={1}
+            pattern="[0-9]{4}"
+            maxLength={4}
             value={formatUtcYearInput(value.from)}
             min={minYear}
-            max={formatUtcYearInput(value.to ?? facet.max)}
             placeholder={minYear}
+            aria-label={`${facet.field} from year`}
             onChange={(event) =>
               onDateChange(facet.field, {
                 ...value,
@@ -214,13 +215,13 @@ function DateFacet({
         <label>
           <span>To</span>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            step={1}
+            pattern="[0-9]{4}"
+            maxLength={4}
             value={formatUtcYearInput(value.to)}
-            min={formatUtcYearInput(value.from ?? facet.min)}
-            max={maxYear}
             placeholder={maxYear}
+            aria-label={`${facet.field} to year`}
             onChange={(event) =>
               onDateChange(facet.field, {
                 ...value,
