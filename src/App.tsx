@@ -3,7 +3,6 @@ import { DetailsPanel } from './components/DetailsPanel'
 import { FiltersPanel } from './components/FiltersPanel'
 import { MapView } from './components/MapView'
 import { StatusLegend } from './components/StatusLegend'
-import { ValidationPanel } from './components/ValidationPanel'
 import { prepareItemsForMap } from './map/features'
 import {
   countMatchingItems,
@@ -14,7 +13,7 @@ import { loadCollectionItems, normalizeCollectionUrl } from './stac/client'
 import { createEmptyFilters, createDefaultHashState, EXAMPLE_COLLECTION_URL, readHashState, writeHashState } from './state/hash'
 import { readRecentUrls, rememberRecentUrl } from './state/recentUrls'
 import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState, ValidationMessage } from './state/types'
-import type { StacCollection, StacItem } from './stac/types'
+import type { StacItem } from './stac/types'
 import './App.css'
 
 const MAX_BACKOFF_SECONDS = 300
@@ -30,30 +29,6 @@ function hasStatusProperty(items: StacItem[]): boolean {
   return items.some((item) => Object.prototype.hasOwnProperty.call(item.properties, 'status'))
 }
 
-function collectionHasGlobalExtent(collection: StacCollection | undefined): boolean {
-  const boundingBoxes = collection?.extent?.spatial?.bbox
-  return Array.isArray(boundingBoxes)
-    ? boundingBoxes.some(
-        (bbox) =>
-          bbox.length >= 4 &&
-          bbox[0] === -180 &&
-          bbox[1] === -90 &&
-          bbox[2] === 180 &&
-          bbox[3] === 90,
-      )
-    : false
-}
-
-function formatClockTime(value: Date | undefined): string | undefined {
-  return value
-    ? value.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    : undefined
-}
-
 function cloneFilters(filters: AppFilters): AppFilters {
   return {
     enums: Object.fromEntries(Object.entries(filters.enums).map(([field, values]) => [field, [...values]])),
@@ -64,73 +39,26 @@ function cloneFilters(filters: AppFilters): AppFilters {
   }
 }
 
-function buildValidationMessages(
-  collection: StacCollection | undefined,
+function reconcileSelectedItem(
   items: StacItem[],
-  loadMessages: ValidationMessage[],
-  mapSummary: ReturnType<typeof prepareItemsForMap>['summary'],
-  statusEnabled: boolean,
-): ValidationMessage[] {
-  if (!collection && loadMessages.length === 0 && items.length === 0) {
-    return []
+  currentSelection: SelectedItemState | undefined,
+): SelectedItemState | undefined {
+  if (!currentSelection) {
+    return undefined
   }
 
-  const messages = [...loadMessages]
-  const hasBlockingError = messages.some((message) => message.level === 'error')
+  const matchingItem = items.find((item, index) => {
+    const itemId = item.id !== undefined && item.id !== null ? String(item.id) : `__index_${index}`
+    return itemId === currentSelection.key
+  })
 
-  if (hasBlockingError && !collection) {
-    return messages
-  }
-
-  if (items.length === 0) {
-    messages.push({
-      code: 'empty-items',
-      level: 'warning',
-      message: 'The collection returned 0 items.',
-    })
-  }
-
-  if (mapSummary.missingGeometryCount > 0) {
-    messages.push({
-      code: 'missing-geometry',
-      level: 'warning',
-      message: `${mapSummary.missingGeometryCount} of ${items.length} items have no usable geometry (no geometry and no bbox) and are not shown on the map.`,
-    })
-  }
-
-  if (items.length > 0 && !statusEnabled) {
-    messages.push({
-      code: 'missing-status',
-      level: 'warning',
-      message: 'No item has a status property — colour coding is disabled.',
-    })
-  }
-
-  if (mapSummary.missingIdCount > 0) {
-    messages.push({
-      code: 'missing-id',
-      level: 'warning',
-      message: `${mapSummary.missingIdCount} items have no id — falling back to array index; incremental refresh may be unreliable for these.`,
-    })
-  }
-
-  if (mapSummary.invalidLonLatCount > 0) {
-    messages.push({
-      code: 'invalid-lon-lat',
-      level: 'info',
-      message: `${mapSummary.invalidLonLatCount} items contain coordinates outside valid lon/lat ranges.`,
-    })
-  }
-
-  if (collectionHasGlobalExtent(collection)) {
-    messages.push({
-      code: 'global-extent',
-      level: 'info',
-      message: 'The collection extent is the global default [-180,-90,180,90], which is common and harmless.',
-    })
-  }
-
-  return messages
+  return matchingItem
+    ? {
+        item: matchingItem,
+        key: currentSelection.key,
+        selfHref: matchingItem.links?.find((link) => link.rel === 'self')?.href,
+      }
+    : undefined
 }
 
 function App() {
@@ -142,13 +70,10 @@ function App() {
   )
   const [filters, setFilters] = useState<AppFilters>(initialHashState.filters ?? createEmptyFilters())
   const [recentUrls, setRecentUrls] = useState<string[]>(() => readRecentUrls())
-  const [collection, setCollection] = useState<StacCollection>()
   const [items, setItems] = useState<StacItem[]>([])
   const [loadMessages, setLoadMessages] = useState<ValidationMessage[]>([])
   const [isInitialLoading, setIsInitialLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isRetrying, setIsRetrying] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>()
   const [selectedItem, setSelectedItem] = useState<SelectedItemState>()
   const [loadSequence, setLoadSequence] = useState(0)
   const [filtersCollapsed, setFiltersCollapsed] = useState(false)
@@ -160,20 +85,14 @@ function App() {
   const activeRequestRef = useRef(false)
   const performLoadRef = useRef<(backgroundRefresh: boolean) => Promise<void>>()
   const lastSuccessfulCollectionUrlRef = useRef<string>()
+  const selectedItemRef = useRef<SelectedItemState>()
 
   const preparedMapItemsResult = useMemo(() => prepareItemsForMap(items), [items])
   const facetsResult = useMemo(() => inferFacets(items), [items])
   const statusEnabled = useMemo(() => hasStatusProperty(items), [items])
-  const validationMessages = useMemo(
-    () =>
-      buildValidationMessages(
-        collection,
-        items,
-        loadMessages,
-        preparedMapItemsResult.summary,
-        statusEnabled,
-      ),
-    [collection, items, loadMessages, preparedMapItemsResult.summary, statusEnabled],
+  const initialLoadError = useMemo(
+    () => (items.length === 0 ? loadMessages.find((message) => message.level === 'error')?.message : undefined),
+    [items.length, loadMessages],
   )
   const showingCount = useMemo(
     () => countMatchingItems(items, filters, facetsResult.facets),
@@ -195,6 +114,10 @@ function App() {
   useEffect(() => {
     syncHashState()
   }, [syncHashState])
+
+  useEffect(() => {
+    selectedItemRef.current = selectedItem
+  }, [selectedItem])
 
   const clearPollTimer = useCallback(() => {
     if (pollTimeoutRef.current !== undefined) {
@@ -231,7 +154,6 @@ function App() {
     const normalizedUrlResult = normalizeCollectionUrl(collectionUrl)
     if (!normalizedUrlResult.normalizedUrl) {
       setLoadMessages(normalizedUrlResult.messages)
-      setCollection(undefined)
       setItems([])
       setSelectedItem(undefined)
       return
@@ -260,35 +182,16 @@ function App() {
         return
       }
 
+      const nextSelectedItem = reconcileSelectedItem(result.items, selectedItemRef.current)
+
       failureCountRef.current = 0
-      setIsRetrying(false)
-      setCollection(result.collection)
+      setSelectedItem(nextSelectedItem)
       setItems(result.items)
       setLoadMessages(result.messages)
       setCollectionUrl(result.collectionUrl)
       setCollectionInput(result.collectionUrl)
-      setLastUpdatedAt(new Date())
       lastSuccessfulCollectionUrlRef.current = result.collectionUrl
       setRecentUrls(rememberRecentUrl(result.collectionUrl))
-
-      setSelectedItem((currentSelection) => {
-        if (!currentSelection) {
-          return currentSelection
-        }
-
-        const matchingItem = result.items.find((item, index) => {
-          const itemId = item.id !== undefined && item.id !== null ? String(item.id) : `__index_${index}`
-          return itemId === currentSelection.key
-        })
-
-        return matchingItem
-          ? {
-              item: matchingItem,
-              key: currentSelection.key,
-              selfHref: matchingItem.links?.find((link) => link.rel === 'self')?.href,
-            }
-          : undefined
-      })
 
       scheduleNextPoll(refreshIntervalSeconds)
     } catch (error) {
@@ -299,27 +202,18 @@ function App() {
       if (error instanceof Error && error.name === 'ValidationError' && 'validationMessage' in error) {
         const validationError = error as Error & { validationMessage: ValidationMessage }
         setLoadMessages([validationError.validationMessage])
-      } else if (error instanceof Error) {
+      } else {
         setLoadMessages([
           {
             code: 'unexpected-error',
             level: 'error',
-            message: error.message,
-          },
-        ])
-      } else {
-        setLoadMessages([
-          {
-            code: 'unknown-error',
-            level: 'error',
-            message: 'The load failed for an unknown reason.',
+            message: error instanceof Error ? error.message : 'Unable to load the collection. Please check the URL and try again.',
           },
         ])
       }
 
       if (backgroundRefresh || items.length > 0) {
         failureCountRef.current += 1
-        setIsRetrying(true)
         const backoffDelaySeconds = Math.min(
           MAX_BACKOFF_SECONDS,
           FAILURE_BACKOFF_BASE_SECONDS * 2 ** (failureCountRef.current - 1),
@@ -437,8 +331,8 @@ function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-copy">
-          <h1>openEO job map viewer</h1>
-          <p className="eyebrow">Static STAC collection viewer</p>
+          <img className="app-logo" src="/weed-logo.png" alt="WEED logo" />
+          <h1>WEED openEO processing status viewer</h1>
         </div>
         <form className="load-form" onSubmit={handleSubmit}>
           <label className="url-field">
@@ -481,6 +375,11 @@ function App() {
               </details>
             ) : null}
           </div>
+          {initialLoadError ? (
+            <p className="load-feedback" role="alert">
+              {initialLoadError}
+            </p>
+          ) : null}
         </form>
       </header>
 
@@ -491,6 +390,7 @@ function App() {
             facets={facetsResult.facets}
             filters={filters}
             items={preparedMapItemsResult.items}
+            loadSequence={loadSequence}
             onSelect={(item) => {
               setSelectedItem(item)
               if (item) {
@@ -502,11 +402,6 @@ function App() {
           {isInitialLoading ? <div className="map-overlay">Loading collection…</div> : null}
 
           <div className="map-overlay-column left-column">
-            <ValidationPanel
-              lastUpdatedLabel={formatClockTime(lastUpdatedAt)}
-              messages={validationMessages}
-              retrying={isRetrying}
-            />
             <FiltersPanel
               facets={facetsResult.facets}
               filters={filters}

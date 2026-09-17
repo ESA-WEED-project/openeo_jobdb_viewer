@@ -31,6 +31,7 @@ interface MapViewProps {
   facets: FacetDefinition[]
   filters: AppFilters
   items: PreparedMapItem[]
+  loadSequence: number
   onSelect: (item?: { item: StacItem; key: string; selfHref?: string }) => void
   statusEnabled: boolean
 }
@@ -40,6 +41,7 @@ export function MapView({
   facets,
   filters,
   items,
+  loadSequence,
   onSelect,
   statusEnabled,
 }: MapViewProps) {
@@ -50,6 +52,7 @@ export function MapView({
   const featureByKeyRef = useRef(new Map<string, Feature<Geometry>>())
   const preparedItemsByKeyRef = useRef(new Map<string, PreparedMapItem>())
   const fittedCollectionUrlRef = useRef<string>()
+  const fittedLoadSequenceRef = useRef<number>()
   const onSelectRef = useRef(onSelect)
   const statusEnabledRef = useRef(statusEnabled)
 
@@ -203,7 +206,7 @@ export function MapView({
     if (
       items.length > 0 &&
       vectorSource.getFeatures().length > 0 &&
-      fittedCollectionUrlRef.current !== collectionUrl
+      (fittedCollectionUrlRef.current !== collectionUrl || fittedLoadSequenceRef.current !== loadSequence)
     ) {
       const extent = vectorSource.getExtent()
       if (extent) {
@@ -213,9 +216,10 @@ export function MapView({
           padding: [32, 32, 32, 32],
         })
         fittedCollectionUrlRef.current = collectionUrl
+        fittedLoadSequenceRef.current = loadSequence
       }
     }
-  }, [collectionUrl, items, itemsByKey])
+  }, [collectionUrl, items, itemsByKey, loadSequence])
 
   useEffect(() => {
     featureByKeyRef.current.forEach((feature, key) => {
