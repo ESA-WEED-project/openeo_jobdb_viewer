@@ -12,7 +12,7 @@ import {
 import { loadCollectionItems, normalizeCollectionUrl } from './stac/client'
 import { createEmptyFilters, createDefaultHashState, EXAMPLE_COLLECTION_URL, readHashState, writeHashState } from './state/hash'
 import { readRecentUrls, rememberRecentUrl } from './state/recentUrls'
-import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState } from './state/types'
+import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState, ValidationMessage } from './state/types'
 import type { StacItem } from './stac/types'
 import './App.css'
 
@@ -49,6 +49,7 @@ function App() {
   const [filters, setFilters] = useState<AppFilters>(initialHashState.filters ?? createEmptyFilters())
   const [recentUrls, setRecentUrls] = useState<string[]>(() => readRecentUrls())
   const [items, setItems] = useState<StacItem[]>([])
+  const [loadMessages, setLoadMessages] = useState<ValidationMessage[]>([])
   const [isInitialLoading, setIsInitialLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedItem, setSelectedItem] = useState<SelectedItemState>()
@@ -66,6 +67,10 @@ function App() {
   const preparedMapItemsResult = useMemo(() => prepareItemsForMap(items), [items])
   const facetsResult = useMemo(() => inferFacets(items), [items])
   const statusEnabled = useMemo(() => hasStatusProperty(items), [items])
+  const initialLoadError = useMemo(
+    () => (items.length === 0 ? loadMessages.find((message) => message.level === 'error')?.message : undefined),
+    [items.length, loadMessages],
+  )
   const showingCount = useMemo(
     () => countMatchingItems(items, filters, facetsResult.facets),
     [items, filters, facetsResult.facets],
@@ -121,6 +126,7 @@ function App() {
 
     const normalizedUrlResult = normalizeCollectionUrl(collectionUrl)
     if (!normalizedUrlResult.normalizedUrl) {
+      setLoadMessages(normalizedUrlResult.messages)
       setItems([])
       setSelectedItem(undefined)
       return
@@ -148,6 +154,7 @@ function App() {
       if (abortController.signal.aborted) {
         return
       }
+      failureCountRef.current = 0
       failureCountRef.current = 0
       failureCountRef.current = 0
       setItems(result.items)
@@ -180,6 +187,14 @@ function App() {
       if (abortController.signal.aborted) {
         return
       }
+
+      setLoadMessages([
+        {
+          code: 'unexpected-error',
+          level: 'error',
+          message: 'Unable to load the collection. Please check the URL and try again.',
+        },
+      ])
 
       if (backgroundRefresh || items.length > 0) {
         failureCountRef.current += 1
@@ -343,6 +358,11 @@ function App() {
               </details>
             ) : null}
           </div>
+          {initialLoadError ? (
+            <p className="load-feedback" role="alert">
+              {initialLoadError}
+            </p>
+          ) : null}
         </form>
       </header>
 
