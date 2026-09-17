@@ -39,6 +39,28 @@ function cloneFilters(filters: AppFilters): AppFilters {
   }
 }
 
+function reconcileSelectedItem(
+  items: StacItem[],
+  currentSelection: SelectedItemState | undefined,
+): SelectedItemState | undefined {
+  if (!currentSelection) {
+    return undefined
+  }
+
+  const matchingItem = items.find((item, index) => {
+    const itemId = item.id !== undefined && item.id !== null ? String(item.id) : `__index_${index}`
+    return itemId === currentSelection.key
+  })
+
+  return matchingItem
+    ? {
+        item: matchingItem,
+        key: currentSelection.key,
+        selfHref: matchingItem.links?.find((link) => link.rel === 'self')?.href,
+      }
+    : undefined
+}
+
 function App() {
   const initialHashState = useMemo(() => ({ ...createDefaultHashState(), ...readHashState() }), [])
   const [collectionInput, setCollectionInput] = useState(initialHashState.collectionUrl)
@@ -63,6 +85,7 @@ function App() {
   const activeRequestRef = useRef(false)
   const performLoadRef = useRef<(backgroundRefresh: boolean) => Promise<void>>()
   const lastSuccessfulCollectionUrlRef = useRef<string>()
+  const selectedItemRef = useRef<SelectedItemState>()
 
   const preparedMapItemsResult = useMemo(() => prepareItemsForMap(items), [items])
   const facetsResult = useMemo(() => inferFacets(items), [items])
@@ -91,6 +114,10 @@ function App() {
   useEffect(() => {
     syncHashState()
   }, [syncHashState])
+
+  useEffect(() => {
+    selectedItemRef.current = selectedItem
+  }, [selectedItem])
 
   const clearPollTimer = useCallback(() => {
     if (pollTimeoutRef.current !== undefined) {
@@ -154,32 +181,17 @@ function App() {
       if (abortController.signal.aborted) {
         return
       }
+
+      const nextSelectedItem = reconcileSelectedItem(result.items, selectedItemRef.current)
+
       failureCountRef.current = 0
+      setSelectedItem(nextSelectedItem)
       setItems(result.items)
       setLoadMessages(result.messages)
       setCollectionUrl(result.collectionUrl)
       setCollectionInput(result.collectionUrl)
       lastSuccessfulCollectionUrlRef.current = result.collectionUrl
       setRecentUrls(rememberRecentUrl(result.collectionUrl))
-
-      setSelectedItem((currentSelection) => {
-        if (!currentSelection) {
-          return currentSelection
-        }
-
-        const matchingItem = result.items.find((item, index) => {
-          const itemId = item.id !== undefined && item.id !== null ? String(item.id) : `__index_${index}`
-          return itemId === currentSelection.key
-        })
-
-        return matchingItem
-          ? {
-              item: matchingItem,
-              key: currentSelection.key,
-              selfHref: matchingItem.links?.find((link) => link.rel === 'self')?.href,
-            }
-          : undefined
-      })
 
       scheduleNextPoll(refreshIntervalSeconds)
     } catch (error) {

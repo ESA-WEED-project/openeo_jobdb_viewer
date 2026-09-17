@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState } from '../state/types'
 import { formatUtcYearInput, parseUtcYearInput } from '../state/datetime'
 import { FloatingPanel } from './FloatingPanel'
@@ -188,6 +189,81 @@ function DateFacet({
   const value = filters.dates[facet.field] ?? {}
   const minYear = formatUtcYearInput(facet.min)
   const maxYear = formatUtcYearInput(facet.max)
+  const activeFromYear = formatUtcYearInput(value.from)
+  const activeToYear = formatUtcYearInput(value.to)
+  const [fromInput, setFromInput] = useState(activeFromYear)
+  const [toInput, setToInput] = useState(activeToYear)
+  const minYearValue = Number(minYear)
+  const maxYearValue = Number(maxYear)
+
+  useEffect(() => {
+    setFromInput(activeFromYear)
+  }, [activeFromYear])
+
+  useEffect(() => {
+    setToInput(activeToYear)
+  }, [activeToYear])
+
+  const clampYear = (nextYear: number, lowerBound: number, upperBound: number) =>
+    String(Math.min(upperBound, Math.max(lowerBound, nextYear)))
+
+  const handleFromYearChange = (nextValue: string) => {
+    if (!/^\d{0,4}$/.test(nextValue)) {
+      return
+    }
+
+    setFromInput(nextValue)
+
+    if (nextValue.length === 0) {
+      onDateChange(facet.field, {
+        ...value,
+        from: undefined,
+      })
+      return
+    }
+
+    if (nextValue.length < 4) {
+      return
+    }
+
+    const parsedYear = Number(nextValue)
+    const upperBound = activeToYear.length === 4 ? Number(activeToYear) : maxYearValue
+    const normalizedYear = clampYear(parsedYear, minYearValue, Math.min(maxYearValue, upperBound))
+    setFromInput(normalizedYear)
+    onDateChange(facet.field, {
+      ...value,
+      from: parseUtcYearInput(normalizedYear, 'start'),
+    })
+  }
+
+  const handleToYearChange = (nextValue: string) => {
+    if (!/^\d{0,4}$/.test(nextValue)) {
+      return
+    }
+
+    setToInput(nextValue)
+
+    if (nextValue.length === 0) {
+      onDateChange(facet.field, {
+        ...value,
+        to: undefined,
+      })
+      return
+    }
+
+    if (nextValue.length < 4) {
+      return
+    }
+
+    const parsedYear = Number(nextValue)
+    const lowerBound = activeFromYear.length === 4 ? Number(activeFromYear) : minYearValue
+    const normalizedYear = clampYear(parsedYear, Math.max(minYearValue, lowerBound), maxYearValue)
+    setToInput(normalizedYear)
+    onDateChange(facet.field, {
+      ...value,
+      to: parseUtcYearInput(normalizedYear, 'end'),
+    })
+  }
 
   return (
     <fieldset className="facet-group">
@@ -200,16 +276,10 @@ function DateFacet({
             inputMode="numeric"
             pattern="[0-9]{4}"
             maxLength={4}
-            value={formatUtcYearInput(value.from)}
-            min={minYear}
+            value={fromInput}
             placeholder={minYear}
             aria-label={`${facet.field} from year`}
-            onChange={(event) =>
-              onDateChange(facet.field, {
-                ...value,
-                from: parseUtcYearInput(event.target.value, 'start'),
-              })
-            }
+            onChange={(event) => handleFromYearChange(event.target.value)}
           />
         </label>
         <label>
@@ -219,15 +289,10 @@ function DateFacet({
             inputMode="numeric"
             pattern="[0-9]{4}"
             maxLength={4}
-            value={formatUtcYearInput(value.to)}
+            value={toInput}
             placeholder={maxYear}
             aria-label={`${facet.field} to year`}
-            onChange={(event) =>
-              onDateChange(facet.field, {
-                ...value,
-                to: parseUtcYearInput(event.target.value, 'end'),
-              })
-            }
+            onChange={(event) => handleToYearChange(event.target.value)}
           />
         </label>
       </div>
