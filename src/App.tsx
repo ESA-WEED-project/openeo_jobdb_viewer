@@ -18,6 +18,7 @@ import './App.css'
 
 const MAX_BACKOFF_SECONDS = 300
 const FAILURE_BACKOFF_BASE_SECONDS = 30
+const APP_LOGO_SRC = `${import.meta.env.BASE_URL}weed-logo.png`
 
 interface SelectedItemState {
   item: StacItem
@@ -331,7 +332,7 @@ function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-copy">
-          <img className="app-logo" src="/weed-logo.png" alt="WEED logo" />
+          <img className="app-logo" src={APP_LOGO_SRC} alt="WEED logo" />
           <h1>WEED openEO processing status viewer</h1>
         </div>
         <form className="load-form" onSubmit={handleSubmit}>
