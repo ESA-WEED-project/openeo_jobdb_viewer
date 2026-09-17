@@ -8,15 +8,12 @@ export interface NormalizeCollectionUrlResult {
 
 export interface LoadCollectionItemsOptions {
   collectionUrl: string
-  pageLimit: number
-  pageSize: number
   signal: AbortSignal
 }
 
 export interface LoadCollectionItemsResult {
   collection: StacCollection
   collectionUrl: string
-  hitPageCap: boolean
   items: StacItem[]
   itemsUrl: string
   messages: ValidationMessage[]
@@ -24,6 +21,8 @@ export interface LoadCollectionItemsResult {
   totalMatched?: number
   totalReturned?: number
 }
+
+const DEFAULT_ITEMS_PAGE_SIZE = 500
 
 class ValidationError extends Error {
   constructor(public readonly validationMessage: ValidationMessage) {
@@ -248,12 +247,12 @@ export async function loadCollectionItems(
   }
 
   const items: StacItem[] = []
-  let nextPageUrl: string | undefined = appendLimit(itemsUrl, options.pageSize)
+  let nextPageUrl: string | undefined = appendLimit(itemsUrl, DEFAULT_ITEMS_PAGE_SIZE)
   let pageCount = 0
   let totalMatched: number | undefined
   let totalReturned = 0
 
-  while (nextPageUrl && pageCount < options.pageLimit) {
+  while (nextPageUrl) {
     const page = await fetchJsonObject<ItemCollectionResponse>(nextPageUrl, options.signal)
     const features = Array.isArray(page.features) ? page.features : []
 
@@ -268,19 +267,9 @@ export async function loadCollectionItems(
     }
   }
 
-  const hitPageCap = Boolean(nextPageUrl) && pageCount >= options.pageLimit
-  if (hitPageCap) {
-    messages.push({
-      code: 'page-cap',
-      level: 'warning',
-      message: `Stopped after ${options.pageLimit} page(s). Increase the page cap to fetch more items.`,
-    })
-  }
-
   return {
     collection,
     collectionUrl: normalizedUrl,
-    hitPageCap,
     items,
     itemsUrl,
     messages,

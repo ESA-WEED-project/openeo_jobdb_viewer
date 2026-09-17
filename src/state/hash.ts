@@ -3,9 +3,8 @@ import type { AppFilters, DateRangeFilter, HashState, NumberRangeFilter, TriStat
 export const EXAMPLE_COLLECTION_URL =
   'https://catalogue.weed.apex.esa.int/collections/AM1729-DT_SLOW_FLOW-extent-jobdb'
 
-export const DEFAULT_PAGE_SIZE = 500
-export const DEFAULT_PAGE_LIMIT = 50
 export const DEFAULT_REFRESH_INTERVAL_SECONDS = 30
+const REMOVED_FILTER_FIELDS = new Set(['bbox', 'target_epsg'])
 
 export function createEmptyFilters(): AppFilters {
   return {
@@ -36,24 +35,19 @@ export function cloneFilters(filters: AppFilters): AppFilters {
 export function createDefaultHashState(): HashState {
   return {
     collectionUrl: EXAMPLE_COLLECTION_URL,
-    pageSize: DEFAULT_PAGE_SIZE,
-    pageLimit: DEFAULT_PAGE_LIMIT,
     refreshIntervalSeconds: DEFAULT_REFRESH_INTERVAL_SECONDS,
     filters: createEmptyFilters(),
   }
 }
 
-function parsePositiveInt(rawValue: string | null, fallback: number): number {
-  if (rawValue === null) {
-    return fallback
-  }
-
-  const parsedValue = Number.parseInt(rawValue, 10)
-  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback
-}
-
 function isTriState(value: string): value is TriState {
   return value === 'any' || value === 'true' || value === 'false'
+}
+
+function stripRemovedFilterFields<T>(values: Record<string, T>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([field]) => !REMOVED_FILTER_FIELDS.has(field)),
+  )
 }
 
 function sanitizeNumberFilter(value: unknown): NumberRangeFilter {
@@ -152,34 +146,38 @@ function sanitizeFilters(rawFilters: unknown): AppFilters {
       : {}
 
   return {
-    enums,
-    texts,
-    numbers,
-    dates,
-    booleans,
+    enums: stripRemovedFilterFields(enums),
+    texts: stripRemovedFilterFields(texts),
+    numbers: stripRemovedFilterFields(numbers),
+    dates: stripRemovedFilterFields(dates),
+    booleans: stripRemovedFilterFields(booleans),
   }
 }
 
 function compactFilters(filters: AppFilters): AppFilters {
   return {
-    enums: Object.fromEntries(
-      Object.entries(filters.enums).filter(([, values]) => values.length > 0),
+    enums: stripRemovedFilterFields(
+      Object.fromEntries(Object.entries(filters.enums).filter(([, values]) => values.length > 0)),
     ),
-    texts: Object.fromEntries(
-      Object.entries(filters.texts).filter(([, value]) => value.trim().length > 0),
+    texts: stripRemovedFilterFields(
+      Object.fromEntries(Object.entries(filters.texts).filter(([, value]) => value.trim().length > 0)),
     ),
-    numbers: Object.fromEntries(
-      Object.entries(filters.numbers).filter(
-        ([, value]) => value.min !== undefined || value.max !== undefined,
+    numbers: stripRemovedFilterFields(
+      Object.fromEntries(
+        Object.entries(filters.numbers).filter(
+          ([, value]) => value.min !== undefined || value.max !== undefined,
+        ),
       ),
     ),
-    dates: Object.fromEntries(
-      Object.entries(filters.dates).filter(
-        ([, value]) => value.from !== undefined || value.to !== undefined,
+    dates: stripRemovedFilterFields(
+      Object.fromEntries(
+        Object.entries(filters.dates).filter(
+          ([, value]) => value.from !== undefined || value.to !== undefined,
+        ),
       ),
     ),
-    booleans: Object.fromEntries(
-      Object.entries(filters.booleans).filter(([, value]) => value !== 'any'),
+    booleans: stripRemovedFilterFields(
+      Object.fromEntries(Object.entries(filters.booleans).filter(([, value]) => value !== 'any')),
     ),
   }
 }
@@ -219,12 +217,14 @@ export function readHashState(): Partial<HashState> {
 
   return {
     collectionUrl: params.get('url') ?? undefined,
-    pageSize: parsePositiveInt(params.get('pageSize'), DEFAULT_PAGE_SIZE),
-    pageLimit: parsePositiveInt(params.get('pageLimit'), DEFAULT_PAGE_LIMIT),
-    refreshIntervalSeconds: parsePositiveInt(
-      params.get('refreshIntervalSeconds'),
-      DEFAULT_REFRESH_INTERVAL_SECONDS,
-    ),
+    refreshIntervalSeconds:
+      (() => {
+        const rawValue = params.get('refreshIntervalSeconds')
+        const parsedValue = rawValue ? Number.parseInt(rawValue, 10) : NaN
+        return Number.isFinite(parsedValue) && parsedValue > 0
+          ? parsedValue
+          : DEFAULT_REFRESH_INTERVAL_SECONDS
+      })(),
     filters: parsedFilters,
   }
 }
@@ -236,8 +236,6 @@ export function writeHashState(state: HashState): void {
     params.set('url', state.collectionUrl)
   }
 
-  params.set('pageSize', String(state.pageSize))
-  params.set('pageLimit', String(state.pageLimit))
   params.set('refreshIntervalSeconds', String(state.refreshIntervalSeconds))
 
   const compactedFilters = compactFilters(state.filters)

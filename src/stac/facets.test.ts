@@ -46,6 +46,36 @@ describe('inferFacets', () => {
     expect(result.facets.find((facet) => facet.field === 'created')?.kind).toBe('datetime')
     expect(result.facets.find((facet) => facet.field === 'cpu')?.kind).toBe('number')
   })
+
+  it('ignores removed fields and infers numeric-with-unit job metrics as number facets', () => {
+    const result = inferFacets([
+      {
+        id: 'job-a',
+        properties: {
+          bbox: 'ignored',
+          cpu: '1 core',
+          duration: '12 s',
+          memory: '256 MB',
+          target_epsg: '3035',
+        },
+        type: 'Feature',
+      },
+      {
+        id: 'job-b',
+        properties: {
+          bbox: 'ignored',
+          cpu: '4 core',
+          duration: '42 s',
+          memory: '1024 MB',
+          target_epsg: '3035',
+        },
+        type: 'Feature',
+      },
+    ])
+
+    expect(result.facets.map((facet) => facet.field)).toEqual(['cpu', 'duration', 'memory'])
+    expect(result.facets.every((facet) => facet.kind === 'number')).toBe(true)
+  })
 })
 
 describe('evaluateItemAgainstFilters', () => {
@@ -74,5 +104,85 @@ describe('evaluateItemAgainstFilters', () => {
     expect(evaluateItemAgainstFilters(items[0], filters, facets)).toBe(false)
     expect(evaluateItemAgainstFilters(items[1], filters, facets)).toBe(true)
     expect(evaluateItemAgainstFilters(items[2], filters, facets)).toBe(false)
+  })
+
+  it('filters cpu values expressed as number-plus-unit strings', () => {
+    const metricItems: StacItem[] = [
+      {
+        id: 'job-1',
+        properties: { cpu: '1 core' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-2',
+        properties: { cpu: '2 core' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-3',
+        properties: { cpu: '8 core' },
+        type: 'Feature',
+      },
+    ]
+
+    const facets = inferFacets(metricItems).facets
+    const filters = createEmptyFilters()
+    filters.numbers.cpu = { min: 2, max: 4 }
+
+    expect(evaluateItemAgainstFilters(metricItems[0], filters, facets)).toBe(false)
+    expect(evaluateItemAgainstFilters(metricItems[1], filters, facets)).toBe(true)
+    expect(evaluateItemAgainstFilters(metricItems[2], filters, facets)).toBe(false)
+  })
+
+  it('normalizes mixed memory units before applying number filters', () => {
+    const metricItems: StacItem[] = [
+      {
+        id: 'job-1',
+        properties: { memory: '512 MB' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-2',
+        properties: { memory: '1 GB' },
+        type: 'Feature',
+      },
+      {
+        id: 'job-3',
+        properties: { memory: '2 GiB' },
+        type: 'Feature',
+      },
+    ]
+
+    const facets = inferFacets(metricItems).facets
+    const filters = createEmptyFilters()
+    filters.numbers.memory = { min: 700, max: 1500 }
+
+    expect(facets.find((facet) => facet.field === 'memory')).toMatchObject({
+      kind: 'number',
+      max: 2048,
+      min: 512,
+      unit: 'MB',
+    })
+    expect(evaluateItemAgainstFilters(metricItems[0], filters, facets)).toBe(false)
+    expect(evaluateItemAgainstFilters(metricItems[1], filters, facets)).toBe(true)
+    expect(evaluateItemAgainstFilters(metricItems[2], filters, facets)).toBe(false)
+  })
+
+  it('keeps metric facets when bare numbers and number-plus-unit strings are mixed', () => {
+    const result = inferFacets([
+      {
+        id: 'job-a',
+        properties: { cpu: 1 },
+        type: 'Feature',
+      },
+      {
+        id: 'job-b',
+        properties: { cpu: '2 core' },
+        type: 'Feature',
+      },
+    ])
+
+    expect(result.facets).toHaveLength(1)
+    expect(result.facets[0]).toMatchObject({ field: 'cpu', kind: 'number', unit: 'core' })
   })
 })

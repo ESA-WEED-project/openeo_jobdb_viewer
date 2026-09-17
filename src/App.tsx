@@ -137,8 +137,6 @@ function App() {
   const initialHashState = useMemo(() => ({ ...createDefaultHashState(), ...readHashState() }), [])
   const [collectionInput, setCollectionInput] = useState(initialHashState.collectionUrl)
   const [collectionUrl, setCollectionUrl] = useState(initialHashState.collectionUrl)
-  const [pageSize, setPageSize] = useState(initialHashState.pageSize)
-  const [pageLimit, setPageLimit] = useState(initialHashState.pageLimit)
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState(
     initialHashState.refreshIntervalSeconds,
   )
@@ -153,6 +151,8 @@ function App() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>()
   const [selectedItem, setSelectedItem] = useState<SelectedItemState>()
   const [loadSequence, setLoadSequence] = useState(0)
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false)
+  const [detailsCollapsed, setDetailsCollapsed] = useState(false)
 
   const abortControllerRef = useRef<AbortController>()
   const pollTimeoutRef = useRef<number>()
@@ -188,11 +188,9 @@ function App() {
     writeHashState({
       collectionUrl,
       filters,
-      pageLimit,
-      pageSize,
       refreshIntervalSeconds,
     })
-  }, [collectionUrl, filters, pageLimit, pageSize, refreshIntervalSeconds])
+  }, [collectionUrl, filters, refreshIntervalSeconds])
 
   useEffect(() => {
     syncHashState()
@@ -252,8 +250,6 @@ function App() {
     try {
       const result = await loadCollectionItems({
         collectionUrl,
-        pageLimit,
-        pageSize,
         signal: abortController.signal,
       })
 
@@ -332,7 +328,7 @@ function App() {
       setIsInitialLoading(false)
       setIsRefreshing(false)
     }
-  }, [collectionUrl, items.length, pageLimit, pageSize, refreshIntervalSeconds, scheduleNextPoll])
+  }, [collectionUrl, items.length, refreshIntervalSeconds, scheduleNextPoll])
 
   useEffect(() => {
     performLoadRef.current = performLoad
@@ -437,7 +433,7 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
+        <div className="app-header-copy">
           <p className="eyebrow">Static STAC collection viewer</p>
           <h1>openEO job map viewer</h1>
           <p className="header-copy">
@@ -455,24 +451,6 @@ function App() {
             />
           </label>
           <div className="config-grid">
-            <label>
-              <span>Items per page</span>
-              <input
-                type="number"
-                min={1}
-                value={pageSize}
-                onChange={(event) => setPageSize(Math.max(1, Number(event.target.value) || 1))}
-              />
-            </label>
-            <label>
-              <span>Page cap</span>
-              <input
-                type="number"
-                min={1}
-                value={pageLimit}
-                onChange={(event) => setPageLimit(Math.max(1, Number(event.target.value) || 1))}
-              />
-            </label>
             <label>
               <span>Refresh interval (s)</span>
               <input
@@ -508,53 +486,67 @@ function App() {
         </form>
       </header>
 
-      <div className="content-grid">
-        <aside className="sidebar">
-          <ValidationPanel
-            lastUpdatedLabel={formatClockTime(lastUpdatedAt)}
-            messages={validationMessages}
-            retrying={isRetrying}
-          />
-          <StatusLegend
-            counts={statusCounts}
-            disabled={!statusEnabled}
-            onToggle={(status) => toggleEnumFilter('status', status)}
-            selectedValues={filters.enums.status ?? []}
-          />
-          <FiltersPanel
+      <main className="map-page">
+        <div className="map-wrapper">
+          <MapView
+            collectionUrl={collectionUrl}
             facets={facetsResult.facets}
             filters={filters}
-            items={items}
-            onBooleanChange={updateBooleanFilter}
-            onDateChange={updateDateFilter}
-            onEnumToggle={toggleEnumFilter}
-            onNumberChange={updateNumberFilter}
-            onReset={resetFilters}
-            onTextChange={updateTextFilter}
-            showingCount={showingCount}
-            sparseFields={facetsResult.sparseFields}
-            totalCount={items.length}
+            items={preparedMapItemsResult.items}
+            onSelect={(item) => {
+              setSelectedItem(item)
+              if (item) {
+                setDetailsCollapsed(false)
+              }
+            }}
+            statusEnabled={statusEnabled}
           />
-        </aside>
+          {isInitialLoading ? <div className="map-overlay">Loading collection…</div> : null}
 
-        <main className="main-panel">
-          <div className="map-wrapper">
-            <MapView
-              collectionUrl={collectionUrl}
+          <div className="map-overlay-column left-column">
+            <ValidationPanel
+              lastUpdatedLabel={formatClockTime(lastUpdatedAt)}
+              messages={validationMessages}
+              retrying={isRetrying}
+            />
+            <FiltersPanel
               facets={facetsResult.facets}
               filters={filters}
-              items={preparedMapItemsResult.items}
-              onSelect={setSelectedItem}
-              statusEnabled={statusEnabled}
+              items={items}
+              onBooleanChange={updateBooleanFilter}
+              onDateChange={updateDateFilter}
+              onEnumToggle={toggleEnumFilter}
+              onNumberChange={updateNumberFilter}
+              onReset={resetFilters}
+              onTextChange={updateTextFilter}
+              onToggleCollapse={() => setFiltersCollapsed((value) => !value)}
+              panelCollapsed={filtersCollapsed}
+              showingCount={showingCount}
+              sparseFields={facetsResult.sparseFields}
+              totalCount={items.length}
             />
-            {isInitialLoading ? <div className="map-overlay">Loading collection…</div> : null}
           </div>
-        </main>
 
-        <aside className="details-column">
-          <DetailsPanel item={selectedItem?.item} itemKey={selectedItem?.key} selfHref={selectedItem?.selfHref} />
-        </aside>
-      </div>
+          <div className="map-overlay-column right-column">
+            <StatusLegend
+              counts={statusCounts}
+              disabled={!statusEnabled}
+              onToggle={(status) => toggleEnumFilter('status', status)}
+              selectedValues={filters.enums.status ?? []}
+            />
+            {selectedItem ? (
+              <DetailsPanel
+                item={selectedItem.item}
+                itemKey={selectedItem.key}
+                onClear={() => setSelectedItem(undefined)}
+                onToggleCollapse={() => setDetailsCollapsed((value) => !value)}
+                panelCollapsed={detailsCollapsed}
+                selfHref={selectedItem.selfHref}
+              />
+            ) : null}
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import type { AppFilters, DateRangeFilter, NumberRangeFilter, TriState } from '../state/types'
 import { formatUtcDateTimeInput, parseUtcDateTimeInput } from '../state/datetime'
+import { FloatingPanel } from './FloatingPanel'
 import {
   getEnumValueCounts,
   type BooleanFacetDefinition,
@@ -20,7 +21,9 @@ interface FiltersPanelProps {
   onEnumToggle: (field: string, value: string) => void
   onNumberChange: (field: string, value: NumberRangeFilter) => void
   onReset: () => void
+  onToggleCollapse: () => void
   onTextChange: (field: string, value: string) => void
+  panelCollapsed: boolean
   showingCount: number
   sparseFields: string[]
   totalCount: number
@@ -102,7 +105,7 @@ function NumberFacet({
 
   return (
     <fieldset className="facet-group">
-      <legend>{facet.field}</legend>
+      <legend>{facet.unit ? `${facet.field} (${facet.unit})` : facet.field}</legend>
       <div className="range-grid">
         <label>
           <span>Minimum</span>
@@ -252,19 +255,34 @@ export function FiltersPanel({
   onEnumToggle,
   onNumberChange,
   onReset,
+  onToggleCollapse,
   onTextChange,
+  panelCollapsed,
   showingCount,
   sparseFields,
   totalCount,
 }: FiltersPanelProps) {
   return (
-    <section className="panel filters-panel" aria-labelledby="filters-title">
-      <div className="panel-header">
-        <h2 id="filters-title">Filters</h2>
-        <button type="button" onClick={onReset}>
-          Reset filters
-        </button>
-      </div>
+    <FloatingPanel
+      className="filters-panel"
+      collapsed={panelCollapsed}
+      title="Filters"
+      actions={
+        <>
+          <button type="button" className="panel-button secondary-button" onClick={onReset}>
+            Reset
+          </button>
+          <button
+            type="button"
+            className="panel-button secondary-button"
+            onClick={onToggleCollapse}
+            aria-expanded={!panelCollapsed}
+          >
+            {panelCollapsed ? 'Expand' : 'Collapse'}
+          </button>
+        </>
+      }
+    >
       <p className="filter-summary">showing {showingCount} of {totalCount} jobs</p>
 
       <div className="facet-list">
@@ -331,6 +349,6 @@ export function FiltersPanel({
           </ul>
         </details>
       ) : null}
-    </section>
+    </FloatingPanel>
   )
 }

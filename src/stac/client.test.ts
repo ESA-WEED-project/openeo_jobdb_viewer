@@ -60,8 +60,6 @@ describe('loadCollectionItems', () => {
 
     const result = await loadCollectionItems({
       collectionUrl: 'https://example.test/collections/jobs',
-      pageLimit: 10,
-      pageSize: 500,
       signal: new AbortController().signal,
     })
 
@@ -80,7 +78,7 @@ describe('loadCollectionItems', () => {
     expect(result.pageCount).toBe(2)
   })
 
-  it('honours pageLimit and warns when more pages are available', async () => {
+  it('keeps fetching until pagination ends', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce(
@@ -103,18 +101,27 @@ describe('loadCollectionItems', () => {
           type: 'FeatureCollection',
         }),
       )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          features: [
+            {
+              id: 'job-2',
+              properties: {},
+              type: 'Feature',
+            },
+          ],
+          type: 'FeatureCollection',
+        }),
+      )
 
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await loadCollectionItems({
       collectionUrl: 'https://example.test/collections/jobs',
-      pageLimit: 1,
-      pageSize: 100,
       signal: new AbortController().signal,
     })
 
-    expect(result.hitPageCap).toBe(true)
-    expect(result.pageCount).toBe(1)
-    expect(result.messages.some((message) => message.code === 'page-cap')).toBe(true)
+    expect(result.pageCount).toBe(2)
+    expect(result.items.map((item) => item.id)).toEqual(['job-1', 'job-2'])
   })
 })

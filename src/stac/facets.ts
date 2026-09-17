@@ -27,6 +27,7 @@ export interface NumberFacetDefinition extends BaseFacetDefinition {
   kind: 'number'
   max: number
   min: number
+  unit?: string
 }
 
 export interface DateFacetDefinition extends BaseFacetDefinition {
@@ -56,6 +57,7 @@ export interface FacetInferenceResult {
 interface FieldAccumulator {
   falseCount: number
   hasArrayOrObjectValue: boolean
+  metricUnit?: string
   numericMax?: number
   numericMin?: number
   presentCount: number
@@ -65,10 +67,105 @@ interface FieldAccumulator {
   types: Set<'boolean' | 'number' | 'string'>
 }
 
+const IGNORED_FACET_FIELDS = new Set(['bbox', 'target_epsg'])
+
+interface MetricFieldDefinition {
+  defaultUnit: string
+  parse: (value: string) => number | undefined
+}
+
+const NUMERIC_UNIT_FIELDS: Record<string, MetricFieldDefinition> = {
+  cpu: {
+    defaultUnit: 'core',
+    parse: (value) => {
+      const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*(.*)$/i)
+      if (!match) {
+        return undefined
+      }
+
+      const numericValue = Number.parseFloat(match[1])
+      return Number.isFinite(numericValue) ? numericValue : undefined
+    },
+  },
+  duration: {
+    defaultUnit: 's',
+    parse: (value) => {
+      const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*([a-z]+)?$/i)
+      if (!match) {
+        return undefined
+      }
+
+      const numericValue = Number.parseFloat(match[1])
+      if (!Number.isFinite(numericValue)) {
+        return undefined
+      }
+
+      const unit = (match[2] ?? 's').toLowerCase()
+      const multipliers: Record<string, number> = {
+        d: 86400,
+        day: 86400,
+        days: 86400,
+        h: 3600,
+        hr: 3600,
+        hrs: 3600,
+        hour: 3600,
+        hours: 3600,
+        m: 60,
+        min: 60,
+        mins: 60,
+        minute: 60,
+        minutes: 60,
+        ms: 0.001,
+        s: 1,
+        sec: 1,
+        secs: 1,
+        second: 1,
+        seconds: 1,
+      }
+
+      const multiplier = multipliers[unit]
+      return multiplier !== undefined ? numericValue * multiplier : undefined
+    },
+  },
+  memory: {
+    defaultUnit: 'MB',
+    parse: (value) => {
+      const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*([a-z]+)?$/i)
+      if (!match) {
+        return undefined
+      }
+
+      const numericValue = Number.parseFloat(match[1])
+      if (!Number.isFinite(numericValue)) {
+        return undefined
+      }
+
+      const unit = (match[2] ?? 'mb').toLowerCase()
+      const multipliers: Record<string, number> = {
+        b: 1 / (1024 * 1024),
+        byte: 1 / (1024 * 1024),
+        bytes: 1 / (1024 * 1024),
+        gb: 1024,
+        gib: 1024,
+        kb: 1 / 1024,
+        kib: 1 / 1024,
+        mb: 1,
+        mib: 1,
+        tb: 1024 * 1024,
+        tib: 1024 * 1024,
+      }
+
+      const multiplier = multipliers[unit]
+      return multiplier !== undefined ? numericValue * multiplier : undefined
+    },
+  },
+}
+
 function createFieldAccumulator(): FieldAccumulator {
   return {
     falseCount: 0,
     hasArrayOrObjectValue: false,
+    metricUnit: undefined,
     presentCount: 0,
     stringCounts: new Map(),
     stringValues: [],
@@ -83,6 +180,19 @@ function isScalarString(value: JsonValue | undefined): value is string {
 
 function isIsoDateTime(value: string): boolean {
   return Number.isFinite(Date.parse(value))
+}
+
+function normalizeNumericMetricValue(field: string, rawValue: string | number): number | undefined {
+  const fieldDefinition = NUMERIC_UNIT_FIELDS[field]
+  if (!fieldDefinition) {
+    return typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : undefined
+  }
+
+  if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+    return rawValue
+  }
+
+  return typeof rawValue === 'string' ? fieldDefinition.parse(rawValue) : undefined
 }
 
 function facetSortOrder(field: string): number {
@@ -114,6 +224,10 @@ export function inferFacets(items: StacItem[]): FacetInferenceResult {
 
   for (const item of items) {
     for (const [field, rawValue] of Object.entries(item.properties)) {
+      if (IGNORED_FACET_FIELDS.has(field)) {
+        continue
+      }
+
       const accumulator = fields.get(field) ?? createFieldAccumulator()
       fields.set(field, accumulator)
 
@@ -129,6 +243,23 @@ export function inferFacets(items: StacItem[]): FacetInferenceResult {
       }
 
       if (typeof rawValue === 'string') {
+        if (field in NUMERIC_UNIT_FIELDS) {
+          const numericValue = normalizeNumericMetricValue(field, rawValue)
+          if (numericValue !== undefined) {
+            accumulator.types.add('number')
+            accumulator.numericMin =
+              accumulator.numericMin === undefined
+                ? numericValue
+                : Math.min(accumulator.numericMin, numericValue)
+            accumulator.numericMax =
+              accumulator.numericMax === undefined
+                ? numericValue
+                : Math.max(accumulator.numericMax, numericValue)
+            accumulator.metricUnit = NUMERIC_UNIT_FIELDS[field].defaultUnit
+            continue
+          }
+        }
+
         accumulator.types.add('string')
         accumulator.stringValues.push(rawValue)
         accumulator.stringCounts.set(rawValue, (accumulator.stringCounts.get(rawValue) ?? 0) + 1)
@@ -137,6 +268,9 @@ export function inferFacets(items: StacItem[]): FacetInferenceResult {
 
       if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
         accumulator.types.add('number')
+        if (field in NUMERIC_UNIT_FIELDS) {
+          accumulator.metricUnit = NUMERIC_UNIT_FIELDS[field].defaultUnit
+        }
         accumulator.numericMin =
           accumulator.numericMin === undefined ? rawValue : Math.min(accumulator.numericMin, rawValue)
         accumulator.numericMax =
@@ -195,6 +329,7 @@ export function inferFacets(items: StacItem[]): FacetInferenceResult {
         presentCount: accumulator.presentCount,
         max: accumulator.numericMax,
         min: accumulator.numericMin,
+        unit: accumulator.metricUnit,
       })
       continue
     }
@@ -273,15 +408,20 @@ function passesNumberFilter(item: StacItem, field: string, range: NumberRangeFil
   }
 
   const rawValue = item.properties[field]
-  if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) {
+  const numericValue =
+    typeof rawValue === 'number' || typeof rawValue === 'string'
+      ? normalizeNumericMetricValue(field, rawValue)
+      : undefined
+
+  if (numericValue === undefined) {
     return false
   }
 
-  if (range.min !== undefined && rawValue < range.min) {
+  if (range.min !== undefined && numericValue < range.min) {
     return false
   }
 
-  if (range.max !== undefined && rawValue > range.max) {
+  if (range.max !== undefined && numericValue > range.max) {
     return false
   }
 

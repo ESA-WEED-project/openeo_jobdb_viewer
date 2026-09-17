@@ -1,8 +1,12 @@
 import type { StacItem } from '../stac/types'
+import { FloatingPanel } from './FloatingPanel'
 
 interface DetailsPanelProps {
   item?: StacItem
   itemKey?: string
+  onClear: () => void
+  onToggleCollapse: () => void
+  panelCollapsed: boolean
   selfHref?: string
 }
 
@@ -26,10 +30,35 @@ function renderValue(value: unknown): string {
   return JSON.stringify(value)
 }
 
-export function DetailsPanel({ item, itemKey, selfHref }: DetailsPanelProps) {
+export function DetailsPanel({
+  item,
+  itemKey,
+  onClear,
+  onToggleCollapse,
+  panelCollapsed,
+  selfHref,
+}: DetailsPanelProps) {
   return (
-    <section className="panel details-panel" aria-labelledby="details-title">
-      <h2 id="details-title">Selected job</h2>
+    <FloatingPanel
+      className="details-panel"
+      collapsed={panelCollapsed}
+      title={item ? `Selected job${item.id !== undefined ? ` · ${String(item.id)}` : ''}` : 'Selected job'}
+      actions={
+        <>
+          <button
+            type="button"
+            className="panel-button secondary-button"
+            onClick={onToggleCollapse}
+            aria-expanded={!panelCollapsed}
+          >
+            {panelCollapsed ? 'Expand' : 'Collapse'}
+          </button>
+          <button type="button" className="panel-button secondary-button" onClick={onClear}>
+            Close
+          </button>
+        </>
+      }
+    >
       {!item ? <p>Click a feature on the map to inspect all of its properties.</p> : null}
 
       {item ? (
@@ -76,6 +105,6 @@ export function DetailsPanel({ item, itemKey, selfHref }: DetailsPanelProps) {
           </table>
         </>
       ) : null}
-    </section>
+    </FloatingPanel>
   )
 }

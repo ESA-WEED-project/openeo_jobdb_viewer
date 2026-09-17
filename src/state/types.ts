@@ -28,8 +28,6 @@ export interface AppFilters {
 
 export interface HashState {
   collectionUrl: string
-  pageSize: number
-  pageLimit: number
   refreshIntervalSeconds: number
   filters: AppFilters
 }
