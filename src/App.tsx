@@ -319,6 +319,7 @@ function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-copy">
+          <img className="app-logo" src="/weed-logo.png" alt="WEED logo" />
           <h1>WEED openEO processing status viewer</h1>
         </div>
         <form className="load-form" onSubmit={handleSubmit}>

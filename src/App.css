@@ -24,8 +24,16 @@
 
 .app-header-copy {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.app-logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.45rem;
+  object-fit: cover;
   flex-shrink: 0;
 }
 
