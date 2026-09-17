@@ -308,6 +308,14 @@ function App() {
             message: error.message,
           },
         ])
+      } else {
+        setLoadMessages([
+          {
+            code: 'unknown-error',
+            level: 'error',
+            message: 'The load failed for an unknown reason.',
+          },
+        ])
       }
 
       if (backgroundRefresh || items.length > 0) {

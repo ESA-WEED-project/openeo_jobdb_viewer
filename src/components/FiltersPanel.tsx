@@ -97,8 +97,8 @@ function NumberFacet({
   onNumberChange: (field: string, value: NumberRangeFilter) => void
 }) {
   const value = filters.numbers[facet.field] ?? {}
-  const currentMin = value.min ?? facet.min
-  const currentMax = value.max ?? facet.max
+  const sliderMin = value.min ?? facet.min
+  const sliderMax = value.max ?? facet.max
 
   return (
     <fieldset className="facet-group">
@@ -108,9 +108,9 @@ function NumberFacet({
           <span>Minimum</span>
           <input
             type="number"
-            value={currentMin}
+            value={value.min ?? ''}
             min={facet.min}
-            max={currentMax}
+            max={value.max ?? facet.max}
             onChange={(event) =>
               onNumberChange(facet.field, {
                 ...value,
@@ -123,8 +123,8 @@ function NumberFacet({
           <span>Maximum</span>
           <input
             type="number"
-            value={currentMax}
-            min={currentMin}
+            value={value.max ?? ''}
+            min={value.min ?? facet.min}
             max={facet.max}
             onChange={(event) =>
               onNumberChange(facet.field, {
@@ -140,7 +140,7 @@ function NumberFacet({
             type="range"
             min={facet.min}
             max={facet.max}
-            value={currentMin}
+            value={sliderMin}
             onChange={(event) =>
               onNumberChange(facet.field, {
                 ...value,
@@ -155,7 +155,7 @@ function NumberFacet({
             type="range"
             min={facet.min}
             max={facet.max}
-            value={currentMax}
+            value={sliderMax}
             onChange={(event) =>
               onNumberChange(facet.field, {
                 ...value,
