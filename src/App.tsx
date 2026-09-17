@@ -176,7 +176,7 @@ function App() {
       })
 
       scheduleNextPoll(refreshIntervalSeconds)
-    } catch (error) {
+    } catch {
       if (abortController.signal.aborted) {
         return
       }
