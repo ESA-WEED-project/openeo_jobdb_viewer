@@ -1,7 +1,7 @@
 import type { AppFilters, DateRangeFilter, HashState, NumberRangeFilter, TriState } from './types'
 
 export const EXAMPLE_COLLECTION_URL =
-  'https://catalogue.weed.apex.esa.int/collections/test_bert-v101-jobdb'
+  'https://catalogue.weed.apex.esa.int/collections/EUNIS2021plus-V311-jobdb'
 
 export const DEFAULT_REFRESH_INTERVAL_SECONDS = 30
 const REMOVED_FILTER_FIELDS = new Set(['bbox', 'target_epsg', 'id'])
