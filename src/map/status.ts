@@ -4,9 +4,12 @@ export const NEUTRAL_STATUS_COLOR = '#5f6f8a'
 const KNOWN_STATUS_COLORS: Record<string, string> = {
   created: '#7b8794',
   queued: '#8f63c7',
-  running: '#1f78b4',
-  downloading: '#0ea5a4',
-  finished: '#2e8b57',
+  queued_for_start: '#7dd3fc',
+  running: '#1e3a8a',
+  downloading: '#86efac',
+  finished: '#166534',
+  not_started: '#a16207',
+  error_openeo: '#dc2626',
   failed: '#d14343',
   cancelled: '#f08a24',
   skipped: '#8c6d4f',
@@ -17,7 +20,10 @@ export function normalizeStatusValue(value: string | undefined): string | undefi
     return undefined
   }
 
-  const normalizedValue = value.trim().toLowerCase()
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
   if (normalizedValue.length === 0) {
     return undefined
   }
@@ -32,6 +38,9 @@ export function normalizeStatusValue(value: string | undefined): string | undefi
     case 'canceled':
     case 'cancelled':
       return 'cancelled'
+    case 'queued_for_start':
+    case 'not_started':
+    case 'error_openeo':
     case 'created':
     case 'queued':
     case 'running':
