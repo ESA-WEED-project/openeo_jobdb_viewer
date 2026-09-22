@@ -22,9 +22,12 @@ describe('getStatusColor', () => {
   it('uses the requested legend colors for known statuses', () => {
     expect(getStatusColor('Downloading', true)).toBe('#86efac')
     expect(getStatusColor('Error_openeo', true)).toBe('#dc2626')
+    expect(getStatusColor('Error openeo', true)).toBe('#dc2626')
     expect(getStatusColor('Finished', true)).toBe('#166534')
     expect(getStatusColor('Not_started', true)).toBe('#a16207')
+    expect(getStatusColor('Not started', true)).toBe('#a16207')
     expect(getStatusColor('Running', true)).toBe('#1e3a8a')
     expect(getStatusColor('Queued_for_start', true)).toBe('#7dd3fc')
+    expect(getStatusColor('Queued-for-start', true)).toBe('#7dd3fc')
   })
 })
