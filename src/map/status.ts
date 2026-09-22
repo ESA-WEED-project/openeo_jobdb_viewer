@@ -20,7 +20,10 @@ export function normalizeStatusValue(value: string | undefined): string | undefi
     return undefined
   }
 
-  const normalizedValue = value.trim().toLowerCase()
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
   if (normalizedValue.length === 0) {
     return undefined
   }
