@@ -1,24 +1,21 @@
 import type Feature from 'ol/Feature'
 import type Geometry from 'ol/geom/Geometry'
-import Point from 'ol/geom/Point'
 import CircleStyle from 'ol/style/Circle'
 import Fill from 'ol/style/Fill'
 import Stroke from 'ol/style/Stroke'
 import Style from 'ol/style/Style'
-import Text from 'ol/style/Text'
 import {
   FEATURE_HOVERED_PROPERTY,
   FEATURE_NORMALIZED_STATUS_PROPERTY,
   FEATURE_STATUS_PROPERTY,
   FEATURE_TILE_ID_PROPERTY,
-  FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY,
+  FEATURE_TILE_ID_LABEL_STYLE_PROPERTY,
   FEATURE_VISIBLE_PROPERTY,
 } from './features'
 import { getStatusColor, NEUTRAL_STATUS_KEY } from './status'
 
 const baseStyleCache = new Map<string, Style>()
 const hoverStyleCache = new Map<string, Style>()
-const tileIdLabelStyleCache = new Map<string, Style>()
 export const TILE_ID_LABEL_MAX_RESOLUTION = 320
 
 function hexToRgba(hexColor: string, alpha: number): string {
@@ -53,29 +50,6 @@ function createStyle(color: string, hovered: boolean): Style {
         width: 1,
       }),
     }),
-  })
-}
-
-function createTileIdLabelStyle(label: string): Style {
-  return new Style({
-    geometry: (feature) => {
-      const labelGeometry = feature.get(FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY)
-      return labelGeometry instanceof Point ? labelGeometry : undefined
-    },
-    text: new Text({
-      fill: new Fill({
-        color: '#111827',
-      }),
-      font: '600 12px sans-serif',
-      overflow: true,
-      stroke: new Stroke({
-        color: 'rgba(255, 255, 255, 0.95)',
-        width: 3,
-      }),
-      text: label,
-      textAlign: 'center',
-    }),
-    zIndex: 10,
   })
 }
 
@@ -120,12 +94,6 @@ export function getFeatureStyle(
     return baseStyle
   }
 
-  const labelStyle =
-    tileIdLabelStyleCache.get(tileId) ??
-    (() => {
-      const style = createTileIdLabelStyle(tileId)
-      tileIdLabelStyleCache.set(tileId, style)
-      return style
-    })()
-  return [baseStyle, labelStyle]
+  const labelStyle = feature.get(FEATURE_TILE_ID_LABEL_STYLE_PROPERTY)
+  return labelStyle instanceof Style ? [baseStyle, labelStyle] : baseStyle
 }

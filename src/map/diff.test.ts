@@ -60,4 +60,48 @@ describe('diffPreparedItems', () => {
       ).toBe(expected)
     })
   })
+
+  it('trims scalar tile ids and ignores empty or structured values', () => {
+    expect(
+      prepareItem(
+        {
+          id: 'job-trimmed',
+          properties: {
+            tileID: ' 31UFS ',
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBe('31UFS')
+
+    expect(
+      prepareItem(
+        {
+          id: 'job-empty',
+          properties: {
+            tileID: '   ',
+            tileid: '32TMT',
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBe('32TMT')
+
+    expect(
+      prepareItem(
+        {
+          id: 'job-invalid',
+          properties: {
+            tileID: null,
+            tileid: [],
+            TileID: {},
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBeUndefined()
+  })
 })

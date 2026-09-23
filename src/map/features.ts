@@ -4,6 +4,7 @@ import type Geometry from 'ol/geom/Geometry'
 import type { GeometryObject } from 'geojson'
 import { prepareItem, type PreparedItem } from './diff'
 import { createRepresentativePoint } from './labelGeometry'
+import { createTileIdLabelStyle } from './tileLabelStyle'
 import type { StacGeometry, StacItem } from '../stac/types'
 
 const geoJsonFormat = new GeoJSON()
@@ -16,6 +17,7 @@ export const FEATURE_NORMALIZED_STATUS_PROPERTY = 'normalizedStatus'
 export const FEATURE_SELF_HREF_PROPERTY = 'selfHref'
 export const FEATURE_TILE_ID_PROPERTY = 'tileId'
 export const FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY = 'tileIdLabelGeometry'
+export const FEATURE_TILE_ID_LABEL_STYLE_PROPERTY = 'tileIdLabelStyle'
 export const FEATURE_VISIBLE_PROPERTY = 'visible'
 export const FEATURE_HOVERED_PROPERTY = 'hovered'
 
@@ -166,6 +168,7 @@ export function applyPreparedItemToFeature(
 ): void {
   feature.setId(item.key)
   feature.setGeometry(item.geometry)
+  const tileIdLabelGeometry = createRepresentativePoint(item.geometry)
   feature.setProperties(
     {
       [FEATURE_FINGERPRINT_PROPERTY]: item.fingerprint,
@@ -175,7 +178,10 @@ export function applyPreparedItemToFeature(
       [FEATURE_STAC_ITEM_PROPERTY]: item.item,
       [FEATURE_STATUS_PROPERTY]: item.rawStatus,
       [FEATURE_TILE_ID_PROPERTY]: item.tileId,
-      [FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY]: createRepresentativePoint(item.geometry),
+      [FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY]: tileIdLabelGeometry,
+      [FEATURE_TILE_ID_LABEL_STYLE_PROPERTY]: item.tileId
+        ? createTileIdLabelStyle(item.tileId, tileIdLabelGeometry)
+        : undefined,
     },
     false,
   )

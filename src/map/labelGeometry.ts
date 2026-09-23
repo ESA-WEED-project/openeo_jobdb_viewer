@@ -1,7 +1,5 @@
 import { getCenter } from 'ol/extent'
 import type Geometry from 'ol/geom/Geometry'
-import LineString from 'ol/geom/LineString'
-import MultiLineString from 'ol/geom/MultiLineString'
 import MultiPoint from 'ol/geom/MultiPoint'
 import MultiPolygon from 'ol/geom/MultiPolygon'
 import Point from 'ol/geom/Point'
@@ -23,22 +21,6 @@ function findClosestPointToExtentCenter(points: Point[], geometry: Geometry): Po
   }, undefined)
 }
 
-function findClosestLineToExtentCenter(lines: LineString[], geometry: Geometry): LineString | undefined {
-  const [centerX, centerY] = getCenter(geometry.getExtent())
-
-  return lines.reduce<LineString | undefined>((closestLine, candidateLine) => {
-    if (!closestLine) {
-      return candidateLine
-    }
-
-    const [closestX, closestY] = closestLine.getCoordinateAt(0.5)
-    const [candidateX, candidateY] = candidateLine.getCoordinateAt(0.5)
-    const closestDistance = (closestX - centerX) ** 2 + (closestY - centerY) ** 2
-    const candidateDistance = (candidateX - centerX) ** 2 + (candidateY - centerY) ** 2
-    return candidateDistance < closestDistance ? candidateLine : closestLine
-  }, undefined)
-}
-
 export function createRepresentativePoint(geometry: Geometry): Point {
   if (geometry instanceof Point) {
     return geometry
@@ -55,13 +37,8 @@ export function createRepresentativePoint(geometry: Geometry): Point {
     )
   }
 
-  if (geometry instanceof LineString) {
-    return new Point(geometry.getCoordinateAt(0.5))
-  }
-
-  if (geometry instanceof MultiLineString) {
-    const line = findClosestLineToExtentCenter(geometry.getLineStrings(), geometry)
-    return line ? new Point(line.getCoordinateAt(0.5)) : new Point(getCenter(geometry.getExtent()))
+  if (geometry.getType() === 'LineString' || geometry.getType() === 'MultiLineString') {
+    return new Point(geometry.getClosestPoint(getCenter(geometry.getExtent())))
   }
 
   if (geometry instanceof MultiPoint) {
