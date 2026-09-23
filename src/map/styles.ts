@@ -8,12 +8,15 @@ import {
   FEATURE_HOVERED_PROPERTY,
   FEATURE_NORMALIZED_STATUS_PROPERTY,
   FEATURE_STATUS_PROPERTY,
+  FEATURE_TILE_ID_PROPERTY,
+  FEATURE_TILE_ID_LABEL_STYLE_PROPERTY,
   FEATURE_VISIBLE_PROPERTY,
 } from './features'
 import { getStatusColor, NEUTRAL_STATUS_KEY } from './status'
 
 const baseStyleCache = new Map<string, Style>()
 const hoverStyleCache = new Map<string, Style>()
+export const TILE_ID_LABEL_MAX_RESOLUTION = 320
 
 function hexToRgba(hexColor: string, alpha: number): string {
   const normalizedColor = hexColor.replace('#', '')
@@ -64,9 +67,15 @@ function readStatusKey(feature: Feature<Geometry>, statusEnabled: boolean): stri
   return typeof rawStatus === 'string' && rawStatus.length > 0 ? rawStatus : NEUTRAL_STATUS_KEY
 }
 
+function readTileId(feature: Feature<Geometry>): string | undefined {
+  const rawTileId = feature.get(FEATURE_TILE_ID_PROPERTY)
+  return typeof rawTileId === 'string' && rawTileId.length > 0 ? rawTileId : undefined
+}
+
 export function getFeatureStyle(
   feature: Feature<Geometry>,
   statusEnabled: boolean,
+  resolution = 0,
 ): Style | Style[] {
   if (feature.get(FEATURE_VISIBLE_PROPERTY) === false) {
     return []
@@ -75,14 +84,16 @@ export function getFeatureStyle(
   const hovered = feature.get(FEATURE_HOVERED_PROPERTY) === true
   const statusKey = readStatusKey(feature, statusEnabled)
   const cache = hovered ? hoverStyleCache : baseStyleCache
-  const cachedStyle = cache.get(statusKey)
-
-  if (cachedStyle) {
-    return cachedStyle
+  const baseStyle = cache.get(statusKey) ?? createStyle(getStatusColor(statusKey, statusEnabled), hovered)
+  if (!cache.has(statusKey)) {
+    cache.set(statusKey, baseStyle)
   }
 
-  const color = getStatusColor(statusKey, statusEnabled)
-  const style = createStyle(color, hovered)
-  cache.set(statusKey, style)
-  return style
+  const tileId = readTileId(feature)
+  if (!tileId || resolution > TILE_ID_LABEL_MAX_RESOLUTION) {
+    return baseStyle
+  }
+
+  const labelStyle = feature.get(FEATURE_TILE_ID_LABEL_STYLE_PROPERTY)
+  return labelStyle instanceof Style ? [baseStyle, labelStyle] : baseStyle
 }

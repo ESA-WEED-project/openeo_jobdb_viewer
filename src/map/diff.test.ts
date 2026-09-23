@@ -34,4 +34,74 @@ describe('diffPreparedItems', () => {
     expect(diff.updated).toHaveLength(0)
     expect(diff.removed).toEqual(['job-1'])
   })
+
+  it('extracts tile ids from supported metadata field variants', () => {
+    const cases = [
+      { expected: '31UFS', field: 'tileID' },
+      { expected: '32TMT', field: 'tileid' },
+      { expected: '33UVP', field: 'TileID' },
+      { expected: '34UFA', field: 'Tileid' },
+      { expected: '35UMB', field: 'tile_id' },
+      { expected: '36UYC', field: 'tile_ID' },
+    ] as const
+
+    cases.forEach(({ expected, field }, index) => {
+      expect(
+        prepareItem(
+          {
+            id: `job-${index + 1}`,
+            properties: {
+              [field]: expected,
+            },
+            type: 'Feature',
+          },
+          index,
+        ).tileId,
+      ).toBe(expected)
+    })
+  })
+
+  it('trims scalar tile ids and ignores empty or structured values', () => {
+    expect(
+      prepareItem(
+        {
+          id: 'job-trimmed',
+          properties: {
+            tileID: ' 31UFS ',
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBe('31UFS')
+
+    expect(
+      prepareItem(
+        {
+          id: 'job-empty',
+          properties: {
+            tileID: '   ',
+            tileid: '32TMT',
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBe('32TMT')
+
+    expect(
+      prepareItem(
+        {
+          id: 'job-invalid',
+          properties: {
+            tileID: null,
+            tileid: [],
+            TileID: {},
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBeUndefined()
+  })
 })

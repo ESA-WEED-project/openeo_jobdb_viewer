@@ -76,8 +76,8 @@ export function MapView({
     const preparedItemsByKey = preparedItemsByKeyRef.current
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: (feature) =>
-        getFeatureStyle(feature as Feature<Geometry>, statusEnabledRef.current),
+      style: (feature, resolution) =>
+        getFeatureStyle(feature as Feature<Geometry>, statusEnabledRef.current, resolution),
     })
 
     const map = new OlMap({
