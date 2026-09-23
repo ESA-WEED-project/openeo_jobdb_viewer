@@ -92,5 +92,11 @@ describe('getFeatureStyle', () => {
     const styles = getFeatureStyle(feature, true, TILE_ID_LABEL_MAX_RESOLUTION)
 
     expect(Array.isArray(styles)).toBe(true)
+    if (!Array.isArray(styles)) {
+      throw new Error('Expected tile ID label styles to be returned')
+    }
+
+    expect(styles).toHaveLength(2)
+    expect(styles[1].getText()?.getText()).toBe('31UFS')
   })
 })
