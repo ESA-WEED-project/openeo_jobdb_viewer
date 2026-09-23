@@ -120,7 +120,12 @@ export function getFeatureStyle(
     return baseStyle
   }
 
-  const labelStyle = tileIdLabelStyleCache.get(tileId) ?? createTileIdLabelStyle(tileId)
-  tileIdLabelStyleCache.set(tileId, labelStyle)
+  const labelStyle =
+    tileIdLabelStyleCache.get(tileId) ??
+    (() => {
+      const style = createTileIdLabelStyle(tileId)
+      tileIdLabelStyleCache.set(tileId, style)
+      return style
+    })()
   return [baseStyle, labelStyle]
 }

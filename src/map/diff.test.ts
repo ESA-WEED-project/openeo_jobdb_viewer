@@ -36,17 +36,30 @@ describe('diffPreparedItems', () => {
   })
 
   it('extracts tile ids from supported metadata field variants', () => {
-    const item = prepareItem(
-      {
-        id: 'job-1',
-        properties: {
-          tile_id: '31UFS',
+    expect(
+      prepareItem(
+        {
+          id: 'job-1',
+          properties: {
+            tile_id: '31UFS',
+          },
+          type: 'Feature',
         },
-        type: 'Feature',
-      },
-      0,
-    )
+        0,
+      ).tileId,
+    ).toBe('31UFS')
 
-    expect(item.tileId).toBe('31UFS')
+    expect(
+      prepareItem(
+        {
+          id: 'job-2',
+          properties: {
+            tileID: '32TMT',
+          },
+          type: 'Feature',
+        },
+        0,
+      ).tileId,
+    ).toBe('32TMT')
   })
 })
