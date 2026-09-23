@@ -116,7 +116,7 @@ function createTileIdLabelStyle(label: string): Style {
   return new Style({
     geometry: (feature) => {
       const geometry = feature.getGeometry()
-      return geometry ? createRepresentativePoint(geometry) : undefined
+      return geometry ? createRepresentativePoint(geometry as Geometry) : undefined
     },
     text: new Text({
       fill: new Fill({
