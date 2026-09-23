@@ -6,7 +6,7 @@ import { prepareItem } from './diff'
 import { getFeatureStyle } from './styles'
 
 describe('getFeatureStyle', () => {
-  it('renders tile id labels for supported metadata fields at readable zoom levels', () => {
+  it('renders tile id labels inside non-rectangular polygon features', () => {
     const feature = createFeatureFromPreparedItem({
       ...prepareItem(
         {
@@ -26,6 +26,13 @@ describe('getFeatureStyle', () => {
           [0, 10],
           [0, 0],
         ],
+        [
+          [4, 4],
+          [6, 4],
+          [6, 6],
+          [4, 6],
+          [4, 4],
+        ],
       ]),
     })
 
@@ -41,7 +48,10 @@ describe('getFeatureStyle', () => {
 
     const labelGeometry = styles[1].getGeometryFunction()?.(feature)
     expect(labelGeometry).toBeInstanceOf(Point)
-    expect((labelGeometry as Point).getCoordinates()).toEqual([5, 5])
+
+    const coordinates = (labelGeometry as Point).getCoordinates()
+    expect(coordinates).not.toEqual([5, 5])
+    expect(feature.getGeometry()?.containsXY(coordinates[0], coordinates[1])).toBe(true)
   })
 
   it('hides tile id labels when zoomed too far out', () => {
