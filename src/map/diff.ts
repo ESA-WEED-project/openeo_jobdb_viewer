@@ -9,6 +9,7 @@ export interface PreparedItem {
   normalizedStatus?: string
   rawStatus?: string
   selfHref?: string
+  tileId?: string
 }
 
 export interface FeatureDiffResult {
@@ -63,6 +64,30 @@ function readSelfHref(item: StacItem): string | undefined {
   return selfLink?.href
 }
 
+const TILE_ID_FIELDS = ['tileID', 'tileid', 'TileID', 'Tileid', 'tile_id', 'tile_ID'] as const
+
+function readTileId(item: StacItem): string | undefined {
+  for (const field of TILE_ID_FIELDS) {
+    const rawValue = item.properties[field]
+
+    if (
+      rawValue === undefined ||
+      rawValue === null ||
+      typeof rawValue === 'object' ||
+      Array.isArray(rawValue)
+    ) {
+      continue
+    }
+
+    const tileId = String(rawValue).trim()
+    if (tileId.length > 0) {
+      return tileId
+    }
+  }
+
+  return undefined
+}
+
 export function deriveItemKey(item: StacItem, index: number): { hadFallbackId: boolean; key: string } {
   const rawId = item.id
 
@@ -101,6 +126,7 @@ export function prepareItem(item: StacItem, index: number): PreparedItem {
     normalizedStatus: normalizeStatusValue(rawStatus),
     rawStatus,
     selfHref: readSelfHref(item),
+    tileId: readTileId(item),
   }
 }
 

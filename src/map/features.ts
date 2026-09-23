@@ -13,6 +13,7 @@ export const FEATURE_STAC_ITEM_PROPERTY = 'stacItem'
 export const FEATURE_STATUS_PROPERTY = 'status'
 export const FEATURE_NORMALIZED_STATUS_PROPERTY = 'normalizedStatus'
 export const FEATURE_SELF_HREF_PROPERTY = 'selfHref'
+export const FEATURE_TILE_ID_PROPERTY = 'tileId'
 export const FEATURE_VISIBLE_PROPERTY = 'visible'
 export const FEATURE_HOVERED_PROPERTY = 'hovered'
 
@@ -171,6 +172,7 @@ export function applyPreparedItemToFeature(
       [FEATURE_SELF_HREF_PROPERTY]: item.selfHref,
       [FEATURE_STAC_ITEM_PROPERTY]: item.item,
       [FEATURE_STATUS_PROPERTY]: item.rawStatus,
+      [FEATURE_TILE_ID_PROPERTY]: item.tileId,
     },
     false,
   )

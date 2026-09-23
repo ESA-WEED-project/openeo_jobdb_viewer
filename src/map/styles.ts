@@ -1,19 +1,25 @@
 import type Feature from 'ol/Feature'
+import { getCenter } from 'ol/extent'
 import type Geometry from 'ol/geom/Geometry'
+import Point from 'ol/geom/Point'
 import CircleStyle from 'ol/style/Circle'
 import Fill from 'ol/style/Fill'
 import Stroke from 'ol/style/Stroke'
 import Style from 'ol/style/Style'
+import Text from 'ol/style/Text'
 import {
   FEATURE_HOVERED_PROPERTY,
   FEATURE_NORMALIZED_STATUS_PROPERTY,
   FEATURE_STATUS_PROPERTY,
+  FEATURE_TILE_ID_PROPERTY,
   FEATURE_VISIBLE_PROPERTY,
 } from './features'
 import { getStatusColor, NEUTRAL_STATUS_KEY } from './status'
 
 const baseStyleCache = new Map<string, Style>()
 const hoverStyleCache = new Map<string, Style>()
+const tileIdLabelStyleCache = new Map<string, Style>()
+const TILE_ID_LABEL_MAX_RESOLUTION = 320
 
 function hexToRgba(hexColor: string, alpha: number): string {
   const normalizedColor = hexColor.replace('#', '')
@@ -50,6 +56,29 @@ function createStyle(color: string, hovered: boolean): Style {
   })
 }
 
+function createTileIdLabelStyle(label: string): Style {
+  return new Style({
+    geometry: (feature) => {
+      const geometry = feature.getGeometry()
+      return geometry ? new Point(getCenter(geometry.getExtent())) : undefined
+    },
+    text: new Text({
+      fill: new Fill({
+        color: '#111827',
+      }),
+      font: '600 12px sans-serif',
+      overflow: true,
+      stroke: new Stroke({
+        color: 'rgba(255, 255, 255, 0.95)',
+        width: 3,
+      }),
+      text: label,
+      textAlign: 'center',
+    }),
+    zIndex: 10,
+  })
+}
+
 function readStatusKey(feature: Feature<Geometry>, statusEnabled: boolean): string {
   if (!statusEnabled) {
     return NEUTRAL_STATUS_KEY
@@ -64,9 +93,15 @@ function readStatusKey(feature: Feature<Geometry>, statusEnabled: boolean): stri
   return typeof rawStatus === 'string' && rawStatus.length > 0 ? rawStatus : NEUTRAL_STATUS_KEY
 }
 
+function readTileId(feature: Feature<Geometry>): string | undefined {
+  const rawTileId = feature.get(FEATURE_TILE_ID_PROPERTY)
+  return typeof rawTileId === 'string' && rawTileId.length > 0 ? rawTileId : undefined
+}
+
 export function getFeatureStyle(
   feature: Feature<Geometry>,
   statusEnabled: boolean,
+  resolution = 0,
 ): Style | Style[] {
   if (feature.get(FEATURE_VISIBLE_PROPERTY) === false) {
     return []
@@ -75,14 +110,17 @@ export function getFeatureStyle(
   const hovered = feature.get(FEATURE_HOVERED_PROPERTY) === true
   const statusKey = readStatusKey(feature, statusEnabled)
   const cache = hovered ? hoverStyleCache : baseStyleCache
-  const cachedStyle = cache.get(statusKey)
-
-  if (cachedStyle) {
-    return cachedStyle
+  const baseStyle = cache.get(statusKey) ?? createStyle(getStatusColor(statusKey, statusEnabled), hovered)
+  if (!cache.has(statusKey)) {
+    cache.set(statusKey, baseStyle)
   }
 
-  const color = getStatusColor(statusKey, statusEnabled)
-  const style = createStyle(color, hovered)
-  cache.set(statusKey, style)
-  return style
+  const tileId = readTileId(feature)
+  if (!tileId || resolution > TILE_ID_LABEL_MAX_RESOLUTION) {
+    return baseStyle
+  }
+
+  const labelStyle = tileIdLabelStyleCache.get(tileId) ?? createTileIdLabelStyle(tileId)
+  tileIdLabelStyleCache.set(tileId, labelStyle)
+  return [baseStyle, labelStyle]
 }

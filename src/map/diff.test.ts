@@ -34,4 +34,19 @@ describe('diffPreparedItems', () => {
     expect(diff.updated).toHaveLength(0)
     expect(diff.removed).toEqual(['job-1'])
   })
+
+  it('extracts tile ids from supported metadata field variants', () => {
+    const item = prepareItem(
+      {
+        id: 'job-1',
+        properties: {
+          tile_id: '31UFS',
+        },
+        type: 'Feature',
+      },
+      0,
+    )
+
+    expect(item.tileId).toBe('31UFS')
+  })
 })
