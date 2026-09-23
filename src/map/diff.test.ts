@@ -36,30 +36,28 @@ describe('diffPreparedItems', () => {
   })
 
   it('extracts tile ids from supported metadata field variants', () => {
-    expect(
-      prepareItem(
-        {
-          id: 'job-1',
-          properties: {
-            tile_id: '31UFS',
-          },
-          type: 'Feature',
-        },
-        0,
-      ).tileId,
-    ).toBe('31UFS')
+    const cases = [
+      { expected: '31UFS', field: 'tileID' },
+      { expected: '32TMT', field: 'tileid' },
+      { expected: '33UVP', field: 'TileID' },
+      { expected: '34UFA', field: 'Tileid' },
+      { expected: '35UMB', field: 'tile_id' },
+      { expected: '36UYC', field: 'tile_ID' },
+    ] as const
 
-    expect(
-      prepareItem(
-        {
-          id: 'job-2',
-          properties: {
-            tileID: '32TMT',
+    cases.forEach(({ expected, field }, index) => {
+      expect(
+        prepareItem(
+          {
+            id: `job-${index + 1}`,
+            properties: {
+              [field]: expected,
+            },
+            type: 'Feature',
           },
-          type: 'Feature',
-        },
-        0,
-      ).tileId,
-    ).toBe('32TMT')
+          index,
+        ).tileId,
+      ).toBe(expected)
+    })
   })
 })

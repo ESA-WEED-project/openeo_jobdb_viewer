@@ -3,6 +3,7 @@ import GeoJSON from 'ol/format/GeoJSON'
 import type Geometry from 'ol/geom/Geometry'
 import type { GeometryObject } from 'geojson'
 import { prepareItem, type PreparedItem } from './diff'
+import { createRepresentativePoint } from './labelGeometry'
 import type { StacGeometry, StacItem } from '../stac/types'
 
 const geoJsonFormat = new GeoJSON()
@@ -14,6 +15,7 @@ export const FEATURE_STATUS_PROPERTY = 'status'
 export const FEATURE_NORMALIZED_STATUS_PROPERTY = 'normalizedStatus'
 export const FEATURE_SELF_HREF_PROPERTY = 'selfHref'
 export const FEATURE_TILE_ID_PROPERTY = 'tileId'
+export const FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY = 'tileIdLabelGeometry'
 export const FEATURE_VISIBLE_PROPERTY = 'visible'
 export const FEATURE_HOVERED_PROPERTY = 'hovered'
 
@@ -173,6 +175,7 @@ export function applyPreparedItemToFeature(
       [FEATURE_STAC_ITEM_PROPERTY]: item.item,
       [FEATURE_STATUS_PROPERTY]: item.rawStatus,
       [FEATURE_TILE_ID_PROPERTY]: item.tileId,
+      [FEATURE_TILE_ID_LABEL_GEOMETRY_PROPERTY]: createRepresentativePoint(item.geometry),
     },
     false,
   )
